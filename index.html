@@ -864,9 +864,176 @@ footer {
   animation: spin .8s linear infinite;
 }
 .hub-empty { text-align: center; padding: 36px 20px; font-size: .75em; color: var(--text3); font-style: italic; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   LOGIN OVERLAY
+═══════════════════════════════════════════════════════════════════ */
+#loginOverlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: #faf9f6;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Outfit', sans-serif;
+}
+#loginOverlay.hidden {
+  animation: loginFadeOut .45s cubic-bezier(.4,0,.2,1) forwards;
+  pointer-events: none;
+}
+@keyframes loginFadeOut {
+  to { opacity: 0; transform: scale(1.02); }
+}
+
+.login-card {
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 20px;
+  padding: 48px 44px 40px;
+  width: 100%; max-width: 400px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.04);
+  animation: loginSlideUp .5s cubic-bezier(.4,0,.2,1);
+}
+@keyframes loginSlideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+.login-logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 2em; font-weight: 500;
+  color: #1a1714; letter-spacing: -0.02em;
+  margin-bottom: 4px;
+}
+.login-logo span {
+  color: var(--gold); font-style: italic;
+}
+.login-sub {
+  font-size: 0.72em; color: #9c9288;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  margin-bottom: 36px;
+}
+
+.login-label {
+  display: block;
+  font-size: 0.65em; font-weight: 600;
+  color: #6b6358; letter-spacing: 0.1em;
+  text-transform: uppercase; margin-bottom: 8px;
+}
+.login-input-wrap {
+  position: relative; margin-bottom: 12px;
+}
+.login-input {
+  width: 100%; padding: 13px 48px 13px 16px;
+  background: #f8f7f4;
+  border: 1.5px solid rgba(0,0,0,0.1);
+  border-radius: 11px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.9em; color: #1a1714;
+  outline: none; transition: border-color .2s, box-shadow .2s;
+  letter-spacing: 0.04em;
+}
+.login-input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(184,146,74,0.12);
+  background: #fff;
+}
+.login-input::placeholder { color: #bdb5aa; }
+.login-eye {
+  position: absolute; right: 14px; top: 50%;
+  transform: translateY(-50%);
+  background: none; border: none; cursor: pointer;
+  color: #9c9288; font-size: 1em; padding: 4px;
+  transition: color .15s;
+}
+.login-eye:hover { color: #6b6358; }
+
+.login-error {
+  display: none; font-size: 0.68em; color: #d03848;
+  background: rgba(208,56,72,0.07);
+  border: 1px solid rgba(208,56,72,0.2);
+  border-radius: 8px; padding: 8px 12px;
+  margin-bottom: 14px;
+  animation: shake .35s cubic-bezier(.4,0,.2,1);
+}
+.login-error.show { display: block; }
+@keyframes shake {
+  0%,100%{ transform:translateX(0)   }
+  20%    { transform:translateX(-6px) }
+  40%    { transform:translateX(6px)  }
+  60%    { transform:translateX(-4px) }
+  80%    { transform:translateX(4px)  }
+}
+
+.login-btn {
+  width: 100%; padding: 13px;
+  background: var(--gold);
+  border: none; border-radius: 11px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.85em; font-weight: 600;
+  color: #fff; cursor: pointer; letter-spacing: 0.04em;
+  transition: background .18s, transform .12s, box-shadow .18s;
+  box-shadow: 0 4px 14px rgba(184,146,74,0.35);
+  margin-top: 4px;
+}
+.login-btn:hover {
+  background: #9a7535;
+  box-shadow: 0 6px 20px rgba(184,146,74,0.45);
+  transform: translateY(-1px);
+}
+.login-btn:active { transform: translateY(0); }
+.login-btn.loading {
+  opacity: .7; cursor: not-allowed;
+  animation: pulse .8s ease-in-out infinite alternate;
+}
+
+.login-footer {
+  margin-top: 28px; padding-top: 20px;
+  border-top: 1px solid rgba(0,0,0,0.06);
+  font-size: 0.6em; color: #bdb5aa;
+  text-align: center; letter-spacing: 0.06em;
+}
+
+/* Blur the app content while login is shown */
+#appWrapper { transition: filter .3s; }
+#appWrapper.blurred { filter: blur(8px); pointer-events: none; user-select: none; }
+
 </style>
 </head>
 <body>
+
+<!-- ═══════════════ LOGIN OVERLAY ═══════════════ -->
+<div id="loginOverlay">
+  <div class="login-card">
+    <div class="login-logo">Au<span>rum</span></div>
+    <div class="login-sub">Market Intelligence · Private Access</div>
+
+    <label class="login-label" for="loginPw">Passwort</label>
+    <div class="login-input-wrap">
+      <input
+        type="password"
+        class="login-input"
+        id="loginPw"
+        placeholder="Passwort eingeben…"
+        autocomplete="current-password"
+        onkeydown="if(event.key==='Enter') doLogin()"
+      >
+      <button class="login-eye" onclick="togglePwVis()" title="Passwort anzeigen" tabindex="-1">👁</button>
+    </div>
+
+    <div class="login-error" id="loginError">
+      ✗ &nbsp;Falsches Passwort — bitte erneut versuchen.
+    </div>
+
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">
+      Einloggen
+    </button>
+
+    <div class="login-footer">
+      Aurum · Nur für autorisierte Nutzer
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ APP WRAPPER ═══════════════════ -->
+<div id="appWrapper" class="blurred">
 
 <div class="bg-layer"></div>
 <div class="grain"></div>
@@ -2220,19 +2387,84 @@ function loadEconCalendar(){
   });
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// INIT
-// ═══════════════════════════════════════════════════════════════════════
-updatePrices();
-setInterval(updatePrices, 60000);
-load();
 
-// News Hub init
-loadHub();
-loadTickers();
-loadEconCalendar();
-// Auto-refresh news every 10 minutes
-setInterval(()=>{ loadHub(); loadTickers(); }, 600000);
+// ═══════════════════════════════════════════════════════════════════════
+// LOGIN SYSTEM
+// Passwort ändern: neuen SHA-256 Hash in PASS_HASH eintragen
+// SHA-256 von "ChristianPriess88" = 1f43f695ba9aa9ade5bf498896635500f4681eafa0a09cdd9eee87c56b0aac53
+// ═══════════════════════════════════════════════════════════════════════
+const PASS_HASH  = '1f43f695ba9aa9ade5bf498896635500f4681eafa0a09cdd9eee87c56b0aac53';
+const SESSION_KEY = 'aurum_auth_v1';
+
+async function sha256(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+async function doLogin(){
+  const pw    = document.getElementById('loginPw').value;
+  const btn   = document.getElementById('loginBtn');
+  const error = document.getElementById('loginError');
+  if(!pw) return;
+  btn.classList.add('loading');
+  btn.textContent = 'Prüfen…';
+  error.classList.remove('show');
+  await new Promise(r => setTimeout(r, 380));
+  const hash = await sha256(pw);
+  if(hash === PASS_HASH){
+    sessionStorage.setItem(SESSION_KEY, '1');
+    const overlay = document.getElementById('loginOverlay');
+    const wrapper = document.getElementById('appWrapper');
+    overlay.classList.add('hidden');
+    wrapper.classList.remove('blurred');
+    setTimeout(() => { overlay.remove(); initApp(); }, 480);
+  } else {
+    btn.classList.remove('loading');
+    btn.textContent = 'Einloggen';
+    error.classList.add('show');
+    document.getElementById('loginPw').value = '';
+    document.getElementById('loginPw').focus();
+  }
+}
+
+function togglePwVis(){
+  const inp = document.getElementById('loginPw');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+// Check session on page load
+(function checkAuth(){
+  if(sessionStorage.getItem(SESSION_KEY) === '1'){
+    const overlay = document.getElementById('loginOverlay');
+    const wrapper = document.getElementById('appWrapper');
+    if(overlay) overlay.remove();
+    if(wrapper) wrapper.classList.remove('blurred');
+  } else {
+    setTimeout(() => {
+      const inp = document.getElementById('loginPw');
+      if(inp) inp.focus();
+    }, 300);
+  }
+})();
+
+// ═══════════════════════════════════════════════════════════════════════
+// INIT — only fires after successful login
+// ═══════════════════════════════════════════════════════════════════════
+function initApp(){
+  updatePrices();
+  setInterval(updatePrices, 60000);
+  load();
+  loadHub();
+  loadTickers();
+  loadEconCalendar();
+  setInterval(()=>{ loadHub(); loadTickers(); }, 600000);
+}
+
+// Auto-start if already authenticated (session still active)
+if(sessionStorage.getItem(SESSION_KEY) === '1'){
+  initApp();
+}
 </script>
+</div><!-- /appWrapper -->
 </body>
 </html>
