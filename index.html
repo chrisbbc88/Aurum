@@ -193,6 +193,11 @@ nav {
 }
 .api-field::placeholder { color: var(--text4); }
 .api-note { font-size: 0.63em; color: var(--text3); }
+.api-status { font-size: 0.65em; font-weight: 500; padding: 3px 10px; border-radius: 20px; transition: all .3s; }
+.api-status.ok      { color: var(--up);   background: var(--up-dim);      }
+.api-status.error   { color: var(--down); background: var(--down-dim);    }
+.api-status.warn    { color: #c47b0f;     background: rgba(196,123,15,.1);}
+.api-status.testing { color: var(--text3);background: none;               }
 
 /* ─── ASSET SELECTOR ──────────────────────────────────────────────────── */
 .asset-selector {
@@ -861,7 +866,8 @@ footer {
   <!-- API KEY -->
   <div class="api-row">
     <span class="api-label">Claude API</span>
-    <input type="password" class="api-field" id="apiKey" placeholder="sk-ant-api03-···  (optional, für KI News-Analyse)">
+    <input type="password" class="api-field" id="apiKey" placeholder="sk-ant-api03-···" oninput="testApiKey()">
+    <span class="api-status" id="apiStatus"></span>
     <span class="api-note">Ohne Key: nur technische Analyse aktiv</span>
   </div>
 
@@ -1582,20 +1588,67 @@ async function getNews(coinId){
 
 async function claudeAI(key, name, arts){
   if(!arts.length) return{trend:'NEUTRAL',score:50,reasoning:'Keine aktuellen News gefunden.',confidence:0,key_factors:[]};
-  const hl=arts.map(a=>`- ${a.title} (${a.src})`).join('\n');
-  const p=`Analysiere diese Krypto-Schlagzeilen für ${name}:\n\n${hl}\n\nAntworte NUR mit JSON (kein Markdown):\n{"trend":"BULLISH"|"BEARISH"|"NEUTRAL","score":<0-100>,"confidence":<0-100>,"reasoning":"<2-3 Sätze auf Deutsch>","key_factors":["f1","f2","f3"]}`;
+  const hl=arts.map(a=>`- ${a.title} (${a.source||a.src||''})`).join('\n');
+  const p=`Analysiere diese Finanzschlagzeilen für ${name}:\n\n${hl}\n\nAntworte NUR mit validem JSON ohne Markdown:\n{"trend":"BULLISH","score":70,"confidence":65,"reasoning":"Deine Analyse auf Deutsch.","key_factors":["Faktor 1","Faktor 2"]}`;
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':key,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify({
+        model:'claude-haiku-4-5-20251001',
+        max_tokens:500,
+        messages:[{role:'user',content:p}]
+      }),
+    });
+    if(!r.ok){
+      let msg='API Fehler '+r.status;
+      try{ const e=await r.json(); msg=e.error?.message||msg; }catch{}
+      throw new Error(msg);
+    }
+    const data=await r.json();
+    let raw=(data.content?.[0]?.text||'').trim();
+    raw=raw.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
+    const match=raw.match(/\{[\s\S]*\}/);
+    if(!match) throw new Error('Kein JSON in Antwort');
+    return JSON.parse(match[0]);
+  }catch(e){
+    console.error('Claude API Fehler:',e);
+    return{trend:'NEUTRAL',score:50,reasoning:`Fehler: ${e.message}`,confidence:0,key_factors:[]};
+  }
+}
+
+async function testApiKey(){
+  const key=document.getElementById('apiKey').value.trim();
+  const status=document.getElementById('apiStatus');
+  if(!key){ status.textContent=''; status.className='api-status'; return; }
+  if(!key.startsWith('sk-ant-')){
+    status.textContent='⚠ Ungültiger Key — muss mit sk-ant- beginnen';
+    status.className='api-status warn'; return;
+  }
+  status.textContent='⟳ Teste Verbindung…'; status.className='api-status testing';
   try{
     const r=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-opus-4-6',max_tokens:400,messages:[{role:'user',content:p}]}),
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:10,messages:[{role:'user',content:'hi'}]}),
     });
-    if(!r.ok){const e=await r.json();throw new Error(e.error?.message||'Fehler');}
-    const data=await r.json();
-    let raw=data.content[0].text.trim();
-    if(raw.includes('```')) raw=raw.replace(/```json|```/g,'').trim();
-    return JSON.parse(raw);
-  }catch(e){return{trend:'NEUTRAL',score:50,reasoning:`Fehler: ${e.message}`,confidence:0,key_factors:[]};}
+    if(r.ok){
+      status.textContent='✓ Verbindung OK — KI-Analyse aktiv';
+      status.className='api-status ok';
+    } else {
+      const e=await r.json();
+      status.textContent='✗ '+(e.error?.message||'Fehler '+r.status);
+      status.className='api-status error';
+    }
+  }catch(e){
+    status.textContent='✗ '+e.message;
+    status.className='api-status error';
+  }
 }
 
 function renderNews(arts, sent){
@@ -1834,6 +1887,24 @@ function timeAgo(dateStr){
   return `vor ${Math.floor(h/24)} Tagen`;
 }
 
+// Zeigt konkrete Uhrzeit: "heute 14:32", "gestern 09:15", "Mo. 11:00", "24.01 08:30"
+function formatPubDate(dateStr){
+  if(!dateStr) return '';
+  const d = new Date(dateStr);
+  if(isNaN(d.getTime())) return dateStr.slice(0,16);
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  const yesterday = new Date(now); yesterday.setDate(now.getDate()-1);
+  const isYesterday = d.toDateString() === yesterday.toDateString();
+  const timeStr = d.toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit'});
+  if(isToday)     return `heute ${timeStr}`;
+  if(isYesterday) return `gestern ${timeStr}`;
+  const weekdays = ['So.','Mo.','Di.','Mi.','Do.','Fr.','Sa.'];
+  const diffDays = Math.floor((now - d) / 86400000);
+  if(diffDays < 7) return `${weekdays[d.getDay()]} ${timeStr}`;
+  return d.toLocaleDateString('de-DE', {day:'2-digit', month:'2-digit'}) + ` ${timeStr}`;
+}
+
 function srcClass(cat){ return 'src-'+cat; }
 function srcLabel(cat){
   return {crypto:'Crypto', macro:'Makro', fed:'Fed / Zinsen', markets:'Märkte'}[cat] || cat;
@@ -1901,7 +1972,7 @@ function renderArticles(cat){
     <div class="news-article">
       <div class="art-source-row">
         <span class="art-source ${srcClass(a.cat)}">${srcLabel(a.cat)}</span>
-        <span class="art-age">${timeAgo(a.pubDate)}</span>
+        <span class="art-age" title="${a.pubDate}">${formatPubDate(a.pubDate)}</span>
       </div>
       <div class="art-headline">
         <a href="${a.link}" target="_blank" rel="noopener">${a.title}</a>
