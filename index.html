@@ -8,33 +8,33 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
-  --ink:        #0f0e0c;
-  --ink2:       #161410;
-  --ink3:       #1e1b17;
-  --ink4:       #252118;
-  --ink5:       #2e2920;
+  --ink:        #ffffff;
+  --ink2:       #f8f8f6;
+  --ink3:       #f1f0ec;
+  --ink4:       #e8e5df;
+  --ink5:       #dedad2;
 
-  --gold:       #c8a96e;
-  --gold-light: #e2c98a;
+  --gold:       #b8924a;
+  --gold-light: #9a7535;
   --gold-pale:  #f5e6c8;
-  --gold-dim:   rgba(200,169,110,0.12);
-  --gold-glow:  rgba(200,169,110,0.25);
+  --gold-dim:   rgba(184,146,74,0.12);
+  --gold-glow:  rgba(184,146,74,0.2);
 
-  --up:         #4eca8b;
-  --up-dim:     rgba(78,202,139,0.1);
-  --down:       #e05c6b;
-  --down-dim:   rgba(224,92,107,0.1);
-  --neutral:    #7b9cc4;
-  --neutral-dim:rgba(123,156,196,0.1);
+  --up:         #1a9e65;
+  --up-dim:     rgba(26,158,101,0.1);
+  --down:       #d03848;
+  --down-dim:   rgba(208,56,72,0.1);
+  --neutral:    #4a7fc1;
+  --neutral-dim:rgba(74,127,193,0.1);
 
-  --text:       #f0ead8;
-  --text2:      #a89880;
-  --text3:      #6b5e4e;
-  --text4:      #3d3328;
+  --text:       #1a1714;
+  --text2:      #3d3830;
+  --text3:      #6b6358;
+  --text4:      #9c9288;
 
-  --border:     rgba(200,169,110,0.1);
-  --border2:    rgba(200,169,110,0.06);
-  --shadow:     rgba(0,0,0,0.4);
+  --border:     rgba(0,0,0,0.1);
+  --border2:    rgba(0,0,0,0.06);
+  --shadow:     rgba(0,0,0,0.08);
 }
 
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
@@ -59,7 +59,7 @@ body {
   position: absolute;
   width: 900px; height: 900px;
   top: -300px; right: -200px;
-  background: radial-gradient(ellipse, rgba(200,169,110,0.04) 0%, transparent 65%);
+  background: radial-gradient(ellipse, rgba(184,146,74,0.05) 0%, transparent 65%);
   animation: floatA 18s ease-in-out infinite alternate;
 }
 .bg-layer::after {
@@ -67,7 +67,7 @@ body {
   position: absolute;
   width: 600px; height: 600px;
   bottom: -100px; left: -100px;
-  background: radial-gradient(ellipse, rgba(78,202,139,0.03) 0%, transparent 65%);
+  background: radial-gradient(ellipse, rgba(26,158,101,0.04) 0%, transparent 65%);
   animation: floatB 24s ease-in-out infinite alternate;
 }
 @keyframes floatA { 0%{transform:translate(0,0) scale(1)} 100%{transform:translate(-60px,80px) scale(1.1)} }
@@ -718,6 +718,37 @@ footer {
 }
 .news-tab.active .tab-count { background: var(--gold-dim); color: var(--gold); border-color: var(--gold); }
 
+/* ── ASSET FILTER STRIP ────────────────────────────────────────── */
+.asset-filter-strip {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 28px 0; flex-wrap: wrap;
+  border-bottom: 1px solid var(--border2);
+  padding-bottom: 14px;
+}
+.afs-label {
+  font-size: .6em; font-weight: 600; color: var(--text3);
+  letter-spacing: .14em; text-transform: uppercase;
+  white-space: nowrap; margin-right: 2px;
+}
+.afs-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--ink3); border: 1px solid var(--border2);
+  border-radius: 30px; padding: 4px 13px;
+  font-size: .68em; font-weight: 500; color: var(--text2);
+  cursor: pointer; transition: all .18s; white-space: nowrap;
+}
+.afs-chip:hover { border-color: var(--border); color: var(--text); }
+.afs-chip.active {
+  background: var(--gold-dim); border-color: var(--gold);
+  color: var(--gold-light); font-weight: 600;
+}
+.afs-chip .chip-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--text3); flex-shrink: 0; transition: background .18s;
+}
+.afs-chip.active .chip-dot { background: var(--gold); }
+.afs-divider { width: 1px; height: 16px; background: var(--border2); margin: 0 2px; }
+
 .news-grid-wrap { padding: 22px 28px 26px; }
 .news-grid {
   display: grid;
@@ -1115,6 +1146,25 @@ footer {
       <div class="news-tab" onclick="switchTab('markets')" id="ntab-markets">Märkte <span class="tab-count" id="cnt-markets">0</span></div>
     </div>
 
+    <!-- Asset Filter Strip -->
+    <div class="asset-filter-strip">
+      <span class="afs-label">Asset-Filter</span>
+      <span class="afs-chip active" onclick="setAssetFilter('all')"      id="afs-all">      <span class="chip-dot"></span>Alle News</span>
+      <span class="afs-chip"        onclick="setAssetFilter('bitcoin')"   id="afs-bitcoin">  <span class="chip-dot"></span>Bitcoin</span>
+      <span class="afs-chip"        onclick="setAssetFilter('ethereum')"  id="afs-ethereum"> <span class="chip-dot"></span>Ethereum</span>
+      <span class="afs-chip"        onclick="setAssetFilter('solana')"    id="afs-solana">   <span class="chip-dot"></span>Solana</span>
+      <span class="afs-chip"        onclick="setAssetFilter('ripple')"    id="afs-ripple">   <span class="chip-dot"></span>XRP</span>
+      <span class="afs-chip"        onclick="setAssetFilter('bnb')"       id="afs-bnb">      <span class="chip-dot"></span>BNB</span>
+      <div class="afs-divider"></div>
+      <span class="afs-chip"        onclick="setAssetFilter('gold')"      id="afs-gold">     <span class="chip-dot"></span>Gold</span>
+      <span class="afs-chip"        onclick="setAssetFilter('silver')"    id="afs-silver">   <span class="chip-dot"></span>Silber</span>
+      <div class="afs-divider"></div>
+      <span class="afs-chip"        onclick="setAssetFilter('eurusd')"    id="afs-eurusd">   <span class="chip-dot"></span>EUR/USD</span>
+      <span class="afs-chip"        onclick="setAssetFilter('fed')"       id="afs-fed">      <span class="chip-dot"></span>Fed / Zinsen</span>
+      <span class="afs-chip"        onclick="setAssetFilter('inflation')" id="afs-inflation"><span class="chip-dot"></span>Inflation</span>
+      <span class="afs-chip"        onclick="setAssetFilter('oil')"       id="afs-oil">      <span class="chip-dot"></span>Öl / WTI</span>
+    </div>
+
     <!-- Economic Calendar -->
     <div class="econ-strip" id="econStrip">
       <div style="font-size:.65em;color:var(--text3);display:flex;align-items:center;gap:6px;padding:4px 0;">
@@ -1364,70 +1414,108 @@ function computeTrend(techScore, newsScore){
 // ═══════════════════════════════════════════════════════════════════════
 // CHARTS
 // ═══════════════════════════════════════════════════════════════════════
-Chart.defaults.color='#6b5e4e';
-Chart.defaults.borderColor='rgba(200,169,110,0.07)';
+Chart.defaults.color='#6b6358';
+Chart.defaults.borderColor='rgba(0,0,0,0.06)';
 Chart.defaults.font.family='Outfit';
 Chart.defaults.font.size=10;
 
 const tipOptions = {
-  backgroundColor:'rgba(22,20,16,.96)',
-  borderColor:'rgba(200,169,110,0.2)',
-  borderWidth:1, titleColor:'#a89880', bodyColor:'#f0ead8', padding:12,
-  cornerRadius:10,
+  backgroundColor:'#ffffff',
+  borderColor:'rgba(0,0,0,0.1)',
+  borderWidth:1, titleColor:'#6b6358', bodyColor:'#1a1714', padding:12,
+  cornerRadius:10, boxShadow:'0 4px 16px rgba(0,0,0,0.08)',
 };
 
 function buildCharts(candles, ind){
   const labels=candles.map(c=>{const d=c.time;return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;});
   const cls=candles.map(c=>c.close);
-  const up='rgba(78,202,139,0.65)', dn='rgba(224,92,107,0.65)';
-  const barC=candles.map(c=>c.close>=c.open?up:dn);
-
   [cP,cR,cM].forEach(c=>c?.destroy());
 
-  // Price chart
-  cP = new Chart(document.getElementById('cPrice'),{
-    type:'bar',
+  // ── Gradient fill for price line ────────────────────────────────
+  const priceCanvas = document.getElementById('cPrice');
+  const priceCtx = priceCanvas.getContext('2d');
+  const isUp = cls[cls.length-1] >= cls[0];
+  const gradPrice = priceCtx.createLinearGradient(0, 0, 0, priceCanvas.offsetHeight || 220);
+  if(isUp){
+    gradPrice.addColorStop(0,'rgba(78,202,139,0.18)');
+    gradPrice.addColorStop(0.6,'rgba(78,202,139,0.04)');
+    gradPrice.addColorStop(1,'rgba(78,202,139,0)');
+  } else {
+    gradPrice.addColorStop(0,'rgba(224,92,107,0.18)');
+    gradPrice.addColorStop(0.6,'rgba(224,92,107,0.04)');
+    gradPrice.addColorStop(1,'rgba(224,92,107,0)');
+  }
+  const lineCol = isUp ? 'rgba(78,202,139,0.9)' : 'rgba(224,92,107,0.9)';
+
+  // ── Price chart — smooth area line ──────────────────────────────
+  cP = new Chart(priceCtx,{
+    type:'line',
     data:{labels,datasets:[
-      {label:'Preis',data:cls,backgroundColor:barC,borderColor:barC,borderWidth:1,barPercentage:.6},
-      {label:'EMA 9',data:ind.e9,type:'line',borderColor:'rgba(200,169,110,.7)',borderWidth:1.5,pointRadius:0,tension:.15,borderDash:[5,4]},
-      {label:'EMA 21',data:ind.e21,type:'line',borderColor:'rgba(200,120,60,.7)',borderWidth:1.5,pointRadius:0,tension:.15},
-      {label:'BB +2σ',data:ind.bbArr.map(b=>b.u),type:'line',borderColor:'rgba(123,156,196,.2)',borderWidth:1,pointRadius:0,fill:false},
-      {label:'BB −2σ',data:ind.bbArr.map(b=>b.l),type:'line',borderColor:'rgba(123,156,196,.2)',borderWidth:1,pointRadius:0,fill:'-1',backgroundColor:'rgba(123,156,196,0.03)'},
+      {label:'Preis',data:cls,borderColor:lineCol,backgroundColor:gradPrice,borderWidth:2,pointRadius:0,tension:.4,fill:true,order:5},
+      {label:'EMA 9',data:ind.e9,borderColor:'rgba(184,146,74,.8)',borderWidth:1.5,pointRadius:0,tension:.3,fill:false,borderDash:[5,4],order:4},
+      {label:'EMA 21',data:ind.e21,borderColor:'rgba(180,100,40,.65)',borderWidth:1.5,pointRadius:0,tension:.3,fill:false,order:3},
+      {label:'BB+',data:ind.bbArr.map(b=>b.u),borderColor:'rgba(74,127,193,.25)',borderWidth:1,pointRadius:0,fill:false,order:2},
+      {label:'BB−',data:ind.bbArr.map(b=>b.l),borderColor:'rgba(74,127,193,.25)',borderWidth:1,pointRadius:0,fill:'-1',backgroundColor:'rgba(74,127,193,0.04)',order:1},
     ]},
     options:{
-      responsive:true, animation:{duration:500},
-      plugins:{legend:{labels:{boxWidth:10,padding:12,color:'#a89880'}},tooltip:{...tipOptions}},
+      responsive:true, animation:{duration:600},
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{labels:{boxWidth:10,padding:14,color:'#6b6358',usePointStyle:true,pointStyleWidth:8}},
+        tooltip:{...tipOptions,callbacks:{label:ctx=>{const v=ctx.raw;return ` ${ctx.dataset.label}: ${v>=1000?'$'+(v/1000).toFixed(2)+'K':'$'+v.toFixed(4)}`;}}},
+      },
       scales:{
-        x:{grid:{display:false},ticks:{color:'#6b5e4e',maxTicksLimit:8}},
-        y:{grid:{color:'rgba(200,169,110,.05)'},position:'right',ticks:{color:'#a89880',callback:v=>v>999?'$'+(v/1000).toFixed(1)+'k':'$'+v.toFixed(2)}},
+        x:{grid:{display:false},border:{display:false},ticks:{color:'#9c9288',maxTicksLimit:8,font:{size:10}}},
+        y:{grid:{color:'rgba(0,0,0,0.05)'},border:{display:false},position:'right',ticks:{color:'#6b6358',font:{size:10},callback:v=>v>=1000?'$'+(v/1000).toFixed(1)+'k':'$'+v.toFixed(2)}},
       },
     },
   });
 
-  // RSI
-  cR = new Chart(document.getElementById('cRsi'),{
+  // ── RSI smooth line with subtle fill ───────────────────────────
+  const rsiCtx = document.getElementById('cRsi').getContext('2d');
+  const gradRsi = rsiCtx.createLinearGradient(0,0,0,70);
+  gradRsi.addColorStop(0,'rgba(74,127,193,0.1)');
+  gradRsi.addColorStop(1,'rgba(74,127,193,0)');
+  cR = new Chart(rsiCtx,{
     type:'line',
-    data:{labels,datasets:[{label:'RSI',data:ind.rsiArr,borderColor:'#7b9cc4',backgroundColor:'rgba(123,156,196,0.06)',borderWidth:1.5,pointRadius:0,tension:.3,fill:true}]},
+    data:{labels,datasets:[{label:'RSI',data:ind.rsiArr,borderColor:'rgba(74,127,193,.85)',backgroundColor:gradRsi,borderWidth:1.5,pointRadius:0,tension:.35,fill:true}]},
     options:{
-      responsive:true, animation:{duration:500},
+      responsive:true, animation:{duration:600},
+      interaction:{mode:'index',intersect:false},
       plugins:{legend:{display:false},tooltip:{...tipOptions}},
-      scales:{x:{display:false},y:{min:0,max:100,grid:{color:'rgba(200,169,110,.05)'},position:'right',ticks:{color:'#6b5e4e',stepSize:25}}},
+      scales:{
+        x:{display:false},
+        y:{min:0,max:100,grid:{color:'rgba(0,0,0,0.05)'},border:{display:false},position:'right',
+          ticks:{color:'#9c9288',font:{size:9},stepSize:25},
+          afterBuildTicks(axis){axis.ticks=[{value:30},{value:50},{value:70}];}
+        },
+      },
+      plugins:{
+        annotation:{annotations:{
+          ob:{type:'line',yMin:70,yMax:70,borderColor:'rgba(224,92,107,.3)',borderWidth:1,borderDash:[4,4]},
+          os:{type:'line',yMin:30,yMax:30,borderColor:'rgba(78,202,139,.3)',borderWidth:1,borderDash:[4,4]},
+        }},
+      },
     },
   });
 
-  // MACD
-  const hC=ind.hist.map(v=>v>=0?'rgba(78,202,139,.45)':'rgba(224,92,107,.45)');
+  // ── MACD — slim histogram + smooth signal lines ─────────────────
+  const hC=ind.hist.map(v=>v>=0?'rgba(78,202,139,.5)':'rgba(224,92,107,.5)');
   cM = new Chart(document.getElementById('cMacd'),{
     type:'bar',
     data:{labels,datasets:[
-      {label:'Hist',data:ind.hist,backgroundColor:hC,borderWidth:0,barPercentage:.8},
-      {label:'MACD',data:ind.macd,type:'line',borderColor:'#7b9cc4',borderWidth:1.5,pointRadius:0,tension:.15},
-      {label:'Signal',data:ind.signal,type:'line',borderColor:'rgba(200,120,60,.6)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,tension:.15},
+      {label:'Hist',data:ind.hist,backgroundColor:hC,borderWidth:0,barPercentage:.35,categoryPercentage:1,order:3},
+      {label:'MACD',data:ind.macd,type:'line',borderColor:'rgba(74,127,193,.85)',borderWidth:1.5,pointRadius:0,tension:.3,fill:false,order:1},
+      {label:'Signal',data:ind.signal,type:'line',borderColor:'rgba(180,100,40,.7)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,tension:.3,fill:false,order:2},
     ]},
     options:{
-      responsive:true, animation:{duration:500},
+      responsive:true, animation:{duration:600},
+      interaction:{mode:'index',intersect:false},
       plugins:{legend:{display:false},tooltip:{...tipOptions}},
-      scales:{x:{display:false},y:{grid:{color:'rgba(200,169,110,.05)'},position:'right',ticks:{color:'#6b5e4e'}}},
+      scales:{
+        x:{display:false},
+        y:{grid:{color:'rgba(0,0,0,0.05)'},border:{display:false},position:'right',ticks:{color:'#9c9288',font:{size:9}}},
+      },
     },
   });
 }
@@ -1686,6 +1774,22 @@ function refreshAll(){
 // All news articles stored here
 let allArticles = [];
 let activeTab   = 'all';
+let activeAssetFilter = 'all';   // ← NEW: asset filter state
+
+// Asset keyword map for filtering
+const ASSET_TERMS = {
+  bitcoin:   ['bitcoin','btc'],
+  ethereum:  ['ethereum','eth'],
+  solana:    ['solana','sol'],
+  ripple:    ['xrp','ripple'],
+  bnb:       ['bnb','binance coin','binance smart'],
+  gold:      ['gold','xau','ounce','goldpreis','gold price'],
+  silver:    ['silver','silber','xag'],
+  eurusd:    ['eur/usd','eurusd','euro dollar','euro vs','euro gegen'],
+  fed:       ['federal reserve','fed ','fomc','interest rate','zinsen','leitzins','powell','hawkish','dovish','rate hike','rate cut'],
+  inflation: ['inflation','cpi','verbraucherpreis','consumer price','ppi','erzeugerpreis'],
+  oil:       ['oil','crude','wti','brent','petroleum','rohöl'],
+};
 
 // ── RSS Feed definitions ─────────────────────────────────────────────
 const HUB_FEEDS = [
@@ -1767,15 +1871,26 @@ function renderArticles(cat){
   const loading = document.getElementById('hubLoading');
   const empty   = document.getElementById('hubEmpty');
 
-  const filtered = cat === 'all'
-    ? allArticles
-    : allArticles.filter(a => a.cat === cat);
+  // 1. Filter by category tab
+  let filtered = cat === 'all' ? allArticles : allArticles.filter(a => a.cat === cat);
+
+  // 2. Further filter by active asset chip
+  if(activeAssetFilter !== 'all'){
+    const terms = ASSET_TERMS[activeAssetFilter] || [activeAssetFilter];
+    filtered = filtered.filter(a => {
+      const haystack = (a.title + ' ' + a.desc).toLowerCase();
+      return terms.some(t => haystack.includes(t));
+    });
+  }
 
   loading.style.display = 'none';
 
   if(!filtered.length){
     grid.style.display  = 'none';
     empty.style.display = 'block';
+    empty.textContent = activeAssetFilter !== 'all'
+      ? `Keine Artikel zu "${document.getElementById('afs-'+activeAssetFilter)?.textContent?.trim()}" gefunden.`
+      : 'Keine Nachrichten für diese Kategorie verfügbar.';
     return;
   }
 
@@ -1798,6 +1913,14 @@ function renderArticles(cat){
         <span style="color:var(--text3);font-weight:400;">${a.source}</span>
       </div>
     </div>`).join('');
+}
+
+// ── Asset filter ──────────────────────────────────────────────────────
+function setAssetFilter(key){
+  activeAssetFilter = key;
+  document.querySelectorAll('.afs-chip').forEach(c => c.classList.remove('active'));
+  document.getElementById(`afs-${key}`)?.classList.add('active');
+  renderArticles(activeTab);
 }
 
 function updateCounts(){
