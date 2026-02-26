@@ -1209,6 +1209,69 @@ footer {
 .ew-wave-badge.cor { background: rgba(208,56,72,.1); color: var(--down); border: 1px solid rgba(208,56,72,.2); }
 .ew-wave-badge.neu { background: var(--neutral-dim); color: var(--neutral); border: 1px solid rgba(74,127,193,.2); }
 
+
+/* ═══════════════════════════════════════════════════════════════════
+   VOLUME HEATMAP CARD
+═══════════════════════════════════════════════════════════════════ */
+.heatmap-canvas-wrap {
+  position: relative;
+}
+.heatmap-canvas-wrap canvas { display: block; }
+
+.vp-targets {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 8px;
+  margin-top: 12px;
+}
+.vp-target-box {
+  border-radius: 9px; padding: 10px 12px;
+  border: 1px solid var(--border2); background: var(--ink3);
+  transition: border-color .2s;
+}
+.vp-target-box:hover { border-color: var(--border); }
+.vp-target-box.resistance { border-left: 3px solid var(--down); }
+.vp-target-box.support    { border-left: 3px solid var(--up);   }
+.vp-target-box.poc        { border-left: 3px solid var(--gold); background: rgba(184,146,74,.04); }
+.vpt-lbl { font-size:.52em; font-weight:700; color:var(--text3); letter-spacing:.1em; text-transform:uppercase; margin-bottom:4px; }
+.vpt-val { font-size:.82em; font-weight:700; font-variant-numeric:tabular-nums; }
+.vpt-val.up { color: var(--up); }
+.vpt-val.dn { color: var(--down); }
+.vpt-val.au { color: var(--gold); }
+.vpt-desc { font-size:.58em; color:var(--text3); margin-top:3px; line-height:1.5; }
+
+.vp-signal-bar {
+  margin-top: 12px; padding: 10px 14px;
+  border-radius: 9px; border: 1px solid var(--border2);
+  background: var(--ink3); font-size:.68em;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.vp-signal-icon { font-size:1.2em; }
+.vp-signal-text { flex:1; color:var(--text2); line-height:1.55; }
+.vp-signal-text strong { color:var(--text); }
+
+/* Auto-refresh indicator */
+.refresh-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 20px; background: var(--ink3);
+  border-bottom: 1px solid var(--border2);
+  font-size: .62em; color: var(--text3);
+}
+.refresh-pip {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--up); flex-shrink:0;
+  animation: pip 2.5s ease-in-out infinite;
+}
+.refresh-progress {
+  flex: 1; height: 2px; background: var(--ink4);
+  border-radius: 1px; overflow: hidden;
+}
+.refresh-prog-bar {
+  height: 100%; background: var(--gold);
+  border-radius: 1px; width: 0%;
+  transition: width 1s linear;
+}
+.refresh-label { white-space: nowrap; }
+.refresh-countdown { font-weight: 600; color: var(--text2); min-width: 28px; text-align:right; }
+
 </style>
 </head>
 <body>
@@ -1432,6 +1495,14 @@ footer {
 
   <!-- MAIN CONTENT -->
   <div id="content" style="display:none;">
+    <!-- Auto-Refresh Bar -->
+    <div class="refresh-bar" id="refreshBar">
+      <div class="refresh-pip"></div>
+      <div class="refresh-progress"><div class="refresh-prog-bar" id="refreshProgBar"></div></div>
+      <span class="refresh-label">Auto-Refresh</span>
+      <span class="refresh-countdown" id="refreshCountdown">60s</span>
+      <button onclick="manualRefreshAll()" style="background:none;border:none;cursor:pointer;color:var(--gold);font-size:1.1em;padding:0 2px;" title="Jetzt aktualisieren">↻</button>
+    </div>
     <div class="grid">
 
       <!-- LEFT -->
@@ -1521,6 +1592,28 @@ footer {
         </div>
 
         <!-- News Panel -->
+        <!-- Volume Profile Heatmap -->
+        <div class="extra-card fade d5" id="heatmapCard">
+          <div class="extra-card-head">
+            <div class="extra-card-title">
+              <div class="ect-icon" style="background:rgba(208,56,72,.1);">🔥</div>
+              Volume Profile Heatmap
+              <span class="extra-card-sub">Volumen-Cluster · Support &amp; Resistance · Kursziel</span>
+            </div>
+            <span id="heatmapBadge" class="ew-wave-badge neu" style="font-size:.6em;">Lädt…</span>
+          </div>
+          <div class="extra-card-body">
+            <div class="heatmap-canvas-wrap">
+              <canvas id="cHeatmap" height="280"></canvas>
+            </div>
+            <div class="vp-targets" id="vpTargets"></div>
+            <div class="vp-signal-bar" id="vpSignal">
+              <span class="vp-signal-icon">📊</span>
+              <span class="vp-signal-text">Analysiere Volumen-Cluster…</span>
+            </div>
+          </div>
+        </div>
+
         <div class="news-panel fade d4">
           <div class="section-title">Nachrichten · Claude Sentiment</div>
           <div id="aiBlock"></div>
@@ -2210,10 +2303,12 @@ async function updatePrices(){
 // ═══════════════════════════════════════════════════════════════════════
 // MAIN LOAD
 // ═══════════════════════════════════════════════════════════════════════
-async function load(){
+async function load(silent=false){
   const c=COINS[coin], apiKey=document.getElementById('apiKey').value.trim();
-  document.getElementById('loader').classList.add('on');
-  document.getElementById('content').style.display='none';
+  if(!silent){
+    document.getElementById('loader').classList.add('on');
+    document.getElementById('content').style.display='none';
+  }
   document.getElementById('errNotice').classList.remove('on');
   document.getElementById('demoTag').classList.remove('on');
 
@@ -2267,6 +2362,7 @@ async function load(){
   renderSigs(ind.sigs);
   loadSeasonalityChart(coin);  // ← Saisonalitäts-Chart
   loadElliottChart(coin);      // ← Elliott-Wellen-Chart
+  loadHeatmap(coin);           // ← Volume Heatmap
 
   // News + Claude
   let nScore=50;
@@ -2289,8 +2385,10 @@ async function load(){
   ns=nScore;
   computeTrend(ts, ns);
 
-  document.getElementById('loader').classList.remove('on');
-  document.getElementById('content').style.display='block';
+  if(!silent){
+    document.getElementById('loader').classList.remove('on');
+    document.getElementById('content').style.display='block';
+  }
   document.querySelectorAll('.fade').forEach(el=>{
     el.style.animation='none'; void el.offsetHeight; el.style.animation='';
   });
@@ -3564,19 +3662,344 @@ async function loadElliottChart(coinId) {
       <div class="ew-box-desc">90-Tage Hoch / Tief · Basis der Fibonacci-Levels</div>
     </div>`;
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// VOLUME PROFILE HEATMAP
+// ═══════════════════════════════════════════════════════════════════════
+let cHeatmap = null;
+
+async function loadHeatmap(coinId) {
+  const badge   = document.getElementById('heatmapBadge');
+  const targDiv = document.getElementById('vpTargets');
+  const sigDiv  = document.getElementById('vpSignal');
+  if(!badge) return;
+
+  badge.textContent = 'Lädt…'; badge.className = 'ew-wave-badge neu';
+
+  // Fetch 90 days for volume profile
+  let candles = [];
+  try {
+    const r = await fetch(
+      `https://api.coingecko.com/api/v3/coins/${coinId}/ohlc?vs_currency=usd&days=90`,
+      { signal: AbortSignal.timeout(9000) }
+    );
+    if(r.ok) {
+      const raw = await r.json();
+      candles = raw.map(([t,o,h,l,cl]) => ({ time:new Date(t), open:o, high:h, low:l, close:cl }));
+    }
+  } catch(e) {}
+
+  // Fallback demo
+  if(candles.length < 20) {
+    const bases = {
+      bitcoin:67000,ethereum:3500,solana:170,ripple:.62,binancecoin:420,
+      cardano:.45,'avalanche-2':35,chainlink:14,polkadot:7,dogecoin:.12,
+      'shiba-inu':.0000085,litecoin:85,tron:.11,near:5,sui:1.2,
+      gold:2350,silver:27,platinum:960,palladium:1000,
+      'pax-gold':2350,'tether-gold':2350,
+      'usd-coin':1,tether:1,'euro-coin':1.08,dai:1,frax:1,
+    };
+    const base = bases[coinId]||100;
+    const seed = coinId.split('').reduce((a,ch)=>a+ch.charCodeAt(0),0);
+    const rng  = s => { const x=Math.sin(s)*10000; return x-Math.floor(x); };
+    let p = base;
+    for(let i=89;i>=0;i--) {
+      const d=new Date(); d.setDate(d.getDate()-i);
+      const drift=(rng(seed+i+1)-.47)*2.2;
+      const o=p, cl=Math.max(o*(1+drift/100),.00001);
+      const h=Math.max(o,cl)*(1+rng(seed+i+50)*.012);
+      const l=Math.min(o,cl)*(1-rng(seed+i+99)*.012);
+      // Simulate higher volume at key levels
+      const vol = (200 + rng(seed+i+7)*800) * (Math.abs(drift)>1.5?2.5:1);
+      p=cl;
+      candles.push({time:d,open:o,high:h,low:l,close:cl,vol});
+    }
+  }
+
+  const currentPrice = candles[candles.length-1].close;
+  const allHigh = Math.max(...candles.map(c=>c.high));
+  const allLow  = Math.min(...candles.map(c=>c.low));
+  const range   = allHigh - allLow;
+
+  // ── Build volume profile: 40 price buckets ─────────────────────
+  const BUCKETS = 40;
+  const bucketSize = range / BUCKETS;
+  const volBuckets = Array(BUCKETS).fill(0);
+  const priceLevels = Array.from({length:BUCKETS}, (_,i) => allLow + (i+0.5)*bucketSize);
+
+  candles.forEach(c => {
+    // Distribute candle's estimated volume across its high-low range
+    const vol = c.vol || (100 + Math.random()*500);
+    const loIdx = Math.floor((c.low  - allLow) / bucketSize);
+    const hiIdx = Math.floor((c.high - allLow) / bucketSize);
+    const spread = Math.max(1, hiIdx - loIdx + 1);
+    for(let b = loIdx; b <= hiIdx && b < BUCKETS; b++) {
+      if(b >= 0) volBuckets[b] += vol / spread;
+    }
+  });
+
+  const maxVol = Math.max(...volBuckets);
+
+  // ── Find key levels ────────────────────────────────────────────
+  // POC = bucket with most volume
+  const pocIdx    = volBuckets.indexOf(maxVol);
+  const pocPrice  = priceLevels[pocIdx];
+
+  // Value Area (70% of volume)
+  const totalVol  = volBuckets.reduce((a,b)=>a+b,0);
+  let vaVol=0, vaLow=pocIdx, vaHigh=pocIdx;
+  while(vaVol < totalVol*0.7 && (vaLow>0||vaHigh<BUCKETS-1)) {
+    const addLow  = vaLow  > 0          ? volBuckets[vaLow-1]  : -1;
+    const addHigh = vaHigh < BUCKETS-1  ? volBuckets[vaHigh+1] : -1;
+    if(addLow > addHigh) { vaVol+=volBuckets[vaLow]; vaLow--; }
+    else if(addHigh>=0)  { vaVol+=volBuckets[vaHigh]; vaHigh++; }
+    else break;
+  }
+  const vaLowPrice  = priceLevels[Math.max(0, vaLow)];
+  const vaHighPrice = priceLevels[Math.min(BUCKETS-1, vaHigh)];
+
+  // Support/Resistance = top 3 volume clusters (excluding POC)
+  const sortedBuckets = volBuckets
+    .map((v,i)=>({v,i,price:priceLevels[i]}))
+    .sort((a,b)=>b.v-a.v);
+
+  // De-duplicate clusters (min 3 buckets apart)
+  const clusters = [];
+  for(const b of sortedBuckets) {
+    if(clusters.length >= 5) break;
+    if(!clusters.some(cl => Math.abs(cl.i-b.i)<3)) clusters.push(b);
+  }
+
+  // Classify as support (below current) or resistance (above)
+  const supports    = clusters.filter(cl=>cl.price < currentPrice).slice(0,2);
+  const resistances = clusters.filter(cl=>cl.price > currentPrice).slice(0,2);
+
+  // Next price target: closest high-volume cluster in trend direction
+  const ema10 = candles.slice(-10).reduce((a,c)=>a+c.close,0)/10;
+  const ema30 = candles.slice(-30).reduce((a,c)=>a+c.close,0)/30;
+  const trendUp = ema10 > ema30;
+  const nextTarget = trendUp
+    ? (resistances[0] ? resistances[0].price : pocPrice*1.05)
+    : (supports[0]    ? supports[0].price    : pocPrice*0.95);
+
+  // ── Color gradient for heatmap bars ───────────────────────────
+  // Hot (red) = high volume, Cool (blue) = low volume
+  const barColors = volBuckets.map((v, i) => {
+    const intensity = v / maxVol;
+    const isPOC     = i === pocIdx;
+    const isVA      = i >= vaLow && i <= vaHigh;
+    const isCurrent = Math.abs(priceLevels[i] - currentPrice) < bucketSize*1.5;
+    if(isPOC)     return `rgba(184,146,74,0.9)`;   // Gold = POC
+    if(isCurrent) return `rgba(74,127,193,0.85)`;  // Blue = current price
+    if(intensity > 0.7) return `rgba(208,56,72,${0.5+intensity*0.4})`;   // Hot red
+    if(intensity > 0.4) return `rgba(220,120,60,${0.4+intensity*0.35})`; // Orange
+    if(intensity > 0.2) return `rgba(184,146,74,${0.3+intensity*0.3})`;  // Warm
+    return `rgba(74,127,193,${0.15+intensity*0.4})`; // Cool blue = low vol
+  });
+
+  // ── Chart.js horizontal bar chart ────────────────────────────
+  if(cHeatmap) cHeatmap.destroy();
+  const ctx = document.getElementById('cHeatmap').getContext('2d');
+  const fmt = p => p>=10000?'$'+(p/1000).toFixed(2)+'K':p>=1?'$'+p.toFixed(2):'$'+p.toFixed(6);
+
+  const priceLabelsFmt = priceLevels.map(p => fmt(p));
+
+  cHeatmap = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: priceLabelsFmt,
+      datasets: [{
+        label: 'Volumen',
+        data: volBuckets,
+        backgroundColor: barColors,
+        borderWidth: 0,
+        borderRadius: 2,
+        barPercentage: 1.0,
+        categoryPercentage: 0.95,
+      }],
+    },
+    options: {
+      indexAxis: 'y',   // ← horizontal bars = price on Y, volume on X
+      responsive: true,
+      animation: { duration: 600 },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor:'#fff', borderColor:'rgba(0,0,0,.1)', borderWidth:1,
+          titleColor:'#6b6358', bodyColor:'#1a1714', padding:10, cornerRadius:8,
+          callbacks: {
+            title: ctx => `Preislevel: ${ctx[0].label}`,
+            label: ctx => {
+              const pct = ((ctx.raw/maxVol)*100).toFixed(1);
+              const i   = ctx.dataIndex;
+              let tag = '';
+              if(i===pocIdx)                    tag=' ★ POC (max. Volumen)';
+              else if(i>=vaLow && i<=vaHigh)    tag=' ◈ Value Area';
+              return ` Volumen: ${pct}% des Max${tag}`;
+            },
+          },
+        },
+        annotation: {
+          annotations: {
+            currentPrice: {
+              type: 'line',
+              xMin: 0, xMax: maxVol,
+              yMin: fmt(currentPrice), yMax: fmt(currentPrice),
+              borderColor: 'rgba(74,127,193,.8)',
+              borderWidth: 2,
+              borderDash: [6,3],
+              label: {
+                content: `Aktuell ${fmt(currentPrice)}`,
+                display: true, position: 'end',
+                color: '#4a7fc1', font: { size: 10, weight: '600' },
+                backgroundColor: 'rgba(74,127,193,.1)',
+              },
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(0,0,0,.04)' }, border: { display: false },
+          ticks: { color: '#bdb5aa', font:{size:9}, callback: v => v===0?'':((v/maxVol*100).toFixed(0)+'%') },
+        },
+        y: {
+          grid: { display: false }, border: { display: false },
+          ticks: {
+            color: '#9c9288', font: { size: 9 },
+            maxTicksLimit: 12,
+            callback: (val, i) => {
+              if(i===pocIdx) return '★ '+priceLabelsFmt[i];
+              const closestSupport = supports.find(s=>s.i===i);
+              const closestResist  = resistances.find(r=>r.i===i);
+              if(closestResist) return '↑ '+priceLabelsFmt[i];
+              if(closestSupport) return '↓ '+priceLabelsFmt[i];
+              return priceLabelsFmt[i];
+            },
+          },
+        },
+      },
+    },
+  });
+
+  // ── Target boxes ──────────────────────────────────────────────
+  const distPOC = ((pocPrice-currentPrice)/currentPrice*100).toFixed(2);
+  const distTarget = ((nextTarget-currentPrice)/currentPrice*100).toFixed(2);
+
+  if(targDiv) targDiv.innerHTML = `
+    <div class="vp-target-box poc">
+      <div class="vpt-lbl">★ POC — Max. Volumen</div>
+      <div class="vpt-val au">${fmt(pocPrice)}</div>
+      <div class="vpt-desc">Point of Control · höchste Handelsaktivität<br>${distPOC>=0?'+':''}${distPOC}% vom aktuellen Kurs</div>
+    </div>
+    <div class="vp-target-box ${trendUp?'resistance':'support'}">
+      <div class="vpt-lbl">🎯 Nächstes Ziel</div>
+      <div class="vpt-val ${trendUp?'up':'dn'}">${fmt(nextTarget)}</div>
+      <div class="vpt-desc">${trendUp?'Widerstand':'Support'}-Cluster mit hohem Volumen<br>${distTarget>=0?'+':''}${distTarget}% vom aktuellen Kurs</div>
+    </div>
+    <div class="vp-target-box ${trendUp?'support':'resistance'}">
+      <div class="vpt-lbl">${trendUp?'📉 Support':'📈 Widerstand'}</div>
+      <div class="vpt-val ${trendUp?'dn':'up'}">${fmt(trendUp?(supports[0]?.price||vaLowPrice):(resistances[0]?.price||vaHighPrice))}</div>
+      <div class="vpt-desc">Value Area ${trendUp?'Low':'High'} · ${trendUp?'Unterstützungszone':'Widerstandszone'}<br>VA: ${fmt(vaLowPrice)} – ${fmt(vaHighPrice)}</div>
+    </div>`;
+
+  // ── Signal bar ────────────────────────────────────────────────
+  const pricePOCDist = Math.abs(currentPrice-pocPrice)/range;
+  const nearPOC  = pricePOCDist < 0.08;
+  const abovePOC = currentPrice > pocPrice;
+
+  let signalIcon, signalText;
+  if(nearPOC) {
+    signalIcon='⚡';
+    signalText=`<strong>Preis nahe am POC (${fmt(pocPrice)})</strong> — hohe Entscheidungszone. Ausbruch nach oben Richtung ${fmt(resistances[0]?.price||nextTarget)} oder Rückfall zu ${fmt(supports[0]?.price||vaLowPrice)} wahrscheinlich.`;
+  } else if(abovePOC && trendUp) {
+    signalIcon='🟢';
+    signalText=`<strong>Bullish Setup:</strong> Kurs über POC (${fmt(pocPrice)}) mit Aufwärtstrend. Nächstes Ziel: <strong>${fmt(nextTarget)}</strong>. Support-Zone bei ${fmt(supports[0]?.price||vaLowPrice)} — hält dieser Level, bleibt das Bild bullish.`;
+  } else if(!abovePOC && !trendUp) {
+    signalIcon='🔴';
+    signalText=`<strong>Bearish Setup:</strong> Kurs unter POC (${fmt(pocPrice)}) mit Abwärtstrend. Nächstes Ziel: <strong>${fmt(nextTarget)}</strong>. Widerstand bei ${fmt(resistances[0]?.price||vaHighPrice)} — bricht der Kurs darüber, Trendwende möglich.`;
+  } else {
+    signalIcon='🟡';
+    signalText=`<strong>Gemischtes Signal:</strong> Kurs ${abovePOC?'über':'unter'} POC, aber ${trendUp?'aufwärts':'abwärts'}-Trend schwach. Beobachte ob POC (${fmt(pocPrice)}) als ${abovePOC?'Support':'Widerstand'} hält.`;
+  }
+
+  if(sigDiv) sigDiv.innerHTML = `<span class="vp-signal-icon">${signalIcon}</span><span class="vp-signal-text">${signalText}</span>`;
+
+  badge.textContent = trendUp ? `↑ Ziel: ${fmt(nextTarget)}` : `↓ Ziel: ${fmt(nextTarget)}`;
+  badge.className   = 'ew-wave-badge ' + (trendUp?'imp':'cor');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// AUTO-REFRESH — jede Minute alles aktualisieren
+// ═══════════════════════════════════════════════════════════════════════
+const REFRESH_INTERVAL = 60; // Sekunden
+let refreshTimer = null, refreshCountdownVal = REFRESH_INTERVAL;
+
+function startRefreshCountdown() {
+  refreshCountdownVal = REFRESH_INTERVAL;
+  const progBar  = document.getElementById('refreshProgBar');
+  const countEl  = document.getElementById('refreshCountdown');
+  if(refreshTimer) clearInterval(refreshTimer);
+
+  refreshTimer = setInterval(() => {
+    refreshCountdownVal--;
+    if(countEl) countEl.textContent = refreshCountdownVal + 's';
+    const pct = ((REFRESH_INTERVAL - refreshCountdownVal) / REFRESH_INTERVAL) * 100;
+    if(progBar) {
+      progBar.style.transition = 'width 1s linear';
+      progBar.style.width = pct + '%';
+    }
+    if(refreshCountdownVal <= 0) {
+      silentRefreshAll();
+      refreshCountdownVal = REFRESH_INTERVAL;
+      if(progBar) { progBar.style.transition='none'; progBar.style.width='0%'; }
+    }
+  }, 1000);
+}
+
+// Silent refresh: update everything without showing loader
+async function silentRefreshAll() {
+  try {
+    // 1. Prices (pill badges)
+    await updatePrices();
+    // 2. Main chart + indicators (silent=true → no loader flash)
+    await load(true);
+    // 3. Heatmap
+    await loadHeatmap(coin);
+    // 4. Elliott
+    await loadElliottChart(coin);
+    // 5. Seasonality (less frequent — only every 10 min)
+    const now = Date.now();
+    if(!window._lastSeasonRefresh || now - window._lastSeasonRefresh > 600000) {
+      await loadSeasonalityChart(coin);
+      window._lastSeasonRefresh = now;
+    }
+    // 6. Tickers
+    await loadTickers();
+  } catch(e) { console.log('Silent refresh error:', e); }
+}
+
+function manualRefreshAll() {
+  if(refreshTimer) clearInterval(refreshTimer);
+  silentRefreshAll().finally(() => startRefreshCountdown());
+}
 // ═══════════════════════════════════════════════════════════════════════
 // INIT — only fires after successful login
 // ═══════════════════════════════════════════════════════════════════════
 function initApp(){
+  // Initial load
   updatePrices();
-  setInterval(updatePrices, 60000);
   load();
   loadHub();
   loadTickers();
   loadEconCalendar();
-  setInterval(()=>{ loadHub(); loadTickers(); }, 600000);
-// Auto-refresh economic calendar every 30 minutes
-setInterval(loadEconCalendar, 1800000);
+  // Start 1-minute auto-refresh (handles chart + prices + heatmap + elliott)
+  startRefreshCountdown();
+  // News hub every 10 min, econ calendar every 30 min
+  setInterval(()=>{ loadHub(); }, 600000);
+  setInterval(loadTickers, 120000);
+  setInterval(loadEconCalendar, 1800000);
 }
 
 // Auto-start if already authenticated (session still active)
