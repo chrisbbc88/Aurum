@@ -926,10 +926,14 @@ footer {
    LOGIN OVERLAY
 ═══════════════════════════════════════════════════════════════════ */
 #loginOverlay {
-  position: fixed; inset: 0; z-index: 9999;
+  position: fixed; inset: 0; z-index: 99999;
   background: #faf9f6;
   display: flex; align-items: center; justify-content: center;
   font-family: 'Outfit', sans-serif;
+  pointer-events: all !important;
+}
+#loginOverlay * {
+  pointer-events: all !important;
 }
 #loginOverlay.hidden {
   animation: loginFadeOut .45s cubic-bezier(.4,0,.2,1) forwards;
@@ -1051,6 +1055,8 @@ footer {
 /* Blur the app content while login is shown */
 #appWrapper { transition: filter .3s; }
 #appWrapper.blurred { filter: blur(8px); pointer-events: none; user-select: none; }
+/* Overlay liegt außerhalb appWrapper — zur Sicherheit */
+body > #loginOverlay { pointer-events: all !important; }
 
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -3145,28 +3151,41 @@ async function sha256(str){
 }
 
 async function doLogin(){
-  const pw    = document.getElementById('loginPw').value;
+  const pw    = (document.getElementById('loginPw').value || '').trim();
   const btn   = document.getElementById('loginBtn');
   const error = document.getElementById('loginError');
   if(!pw) return;
-  btn.classList.add('loading');
+
+  // Prevent double-click
+  if(btn.disabled) return;
+  btn.disabled = true;
   btn.textContent = 'Prüfen…';
-  error.classList.remove('show');
-  await new Promise(r => setTimeout(r, 380));
-  const hash = await sha256(pw);
-  if(hash === PASS_HASH){
-    sessionStorage.setItem(SESSION_KEY, '1');
-    const overlay = document.getElementById('loginOverlay');
-    const wrapper = document.getElementById('appWrapper');
-    overlay.classList.add('hidden');
-    wrapper.classList.remove('blurred');
-    setTimeout(() => { overlay.remove(); initApp(); }, 480);
-  } else {
-    btn.classList.remove('loading');
+  if(error) error.classList.remove('show');
+
+  try {
+    const hash = await sha256(pw);
+    if(hash === PASS_HASH){
+      sessionStorage.setItem(SESSION_KEY, '1');
+      const overlay = document.getElementById('loginOverlay');
+      const wrapper = document.getElementById('appWrapper');
+      if(overlay) { overlay.style.opacity='0'; overlay.style.transform='scale(1.03)'; overlay.style.transition='opacity .4s,transform .4s'; }
+      if(wrapper) wrapper.classList.remove('blurred');
+      setTimeout(() => {
+        if(overlay) overlay.remove();
+        initApp();
+      }, 420);
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Einloggen';
+      if(error) error.classList.add('show');
+      const inp = document.getElementById('loginPw');
+      inp.value = '';
+      inp.focus();
+    }
+  } catch(e) {
+    btn.disabled = false;
     btn.textContent = 'Einloggen';
-    error.classList.add('show');
-    document.getElementById('loginPw').value = '';
-    document.getElementById('loginPw').focus();
+    console.error('Login error:', e);
   }
 }
 
@@ -3675,12 +3694,10 @@ function detectElliottPhase(candles) {
     else if(rocLong<-20)                  { wave='C'; phase='Korrektur';     impulse=false; }
     else                                  { wave='A'; phase='Korrektur';     impulse=false; }
   } else {
-    if(pos<0.12 && roc<0)          { wave='C'; phase='Korrektur (Ende)'; impulse=false; }
-    else if(pos<0.3 && roc<0)      { wave='A'; phase='Korrektur';  impulse=false; }
-    else if(pos>0.45 && roc>0)    { wave='B'; phase='Gegenbewegung'; impulse=false; }
-    else                          { wave='A'; phase='Korrektur';  impulse=false; }
-  } else {
-    wave='3/4'; phase='Konsolidierung'; impulse=false;
+    // SIDEWAYS
+    if(pos>0.6 && roc>0)                  { wave='B'; phase='Gegenbewegung'; impulse=false; }
+    else if(pos<0.4 && roc<0)             { wave='A'; phase='Korrektur';     impulse=false; }
+    else                                  { wave='3/4'; phase='Konsolidierung'; impulse=false; }
   }
 
   // Fibonacci projections from swing low to swing high
@@ -3749,10 +3766,8 @@ async function loadElliottChart(coinId, days) {
   if(!badge || !infoG) return;
 
   badge.textContent = 'Analysiert…'; badge.className = 'ew-wave-badge neu';
-  const periodLabel = d===90?'3 Monate':d===180?'6 Monate':d===365?'1 Jahr':'2 Jahre';
-  const candleNote  = d<=90?'Tageskerzen':d<=180?'3-Tages-Kerzen':d<=365?'Wochenkerzen':'Wochenkerzen';
-  if(note) note.textContent = `Lade ${periodLabel} · ${candleNote}…`;
-  if(subLbl) subLbl.textContent = `${periodLabel} · Automatische Wellenerkennung`;
+  const pLabelLoad = d===90?'3 Monate':d===180?'6 Monate':d===365?'12 Monate':'24 Monate';
+  if(note) note.textContent = `Lade ${pLabelLoad} Daten…`;
 
   // Fetch OHLC for selected period
   let candles = [];
@@ -3916,12 +3931,9 @@ async function loadElliottChart(coinId, days) {
   // Update badge + period info
   badge.textContent = `Welle ${ew.wave} · ${ew.phase}`;
   badge.className   = 'ew-wave-badge ' + (ew.impulse?'imp':ew.phase==='Gegenbewegung'?'neu':'cor');
-  const pLabel = d===90?'3 Monate':d===180?'6 Monate':d===365?'1 Jahr':'2 Jahre';
-  const kLabel = d<=90?'Tageskerzen':d<=365?'Wochenkerzen':'Wochenkerzen';
-  if(note)   note.textContent   = `${candles.length} Kerzen · ${kLabel}`;
-  if(subLbl) subLbl.textContent = `${pLabel} · Automatische Wellenerkennung`;
   const periodLabel = d===90?'3 Monate':d===180?'6 Monate':d===365?'12 Monate':'24 Monate';
-  if(subLbl) subLbl.textContent = `${periodLabel} · ${candles.length} Datenpunkte · ${ew.trend==='UP'?'↑ Aufwärtstrend':ew.trend==='DOWN'?'↓ Abwärtstrend':'→ Seitwärts'}`;
+  const kLabel = d<=90?'Tages':d<=365?'Wochen':'Wochen';
+  if(subLbl) subLbl.textContent = `${periodLabel} · ${candles.length} ${kLabel}kerzen · ${ew.trend==='UP'?'↑ Aufwärts':ew.trend==='DOWN'?'↓ Abwärts':'→ Seitwärts'}`;
   if(note)   note.textContent   = `${candles.length} Kerzen · Pivot-Fenster: ${Math.max(3,Math.floor(candles.length/10))} · Fib: ${fmt(ew.swingLow)}–${fmt(ew.swingHigh)}`;
 
   // Info grid
