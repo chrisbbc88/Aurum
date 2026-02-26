@@ -836,23 +836,80 @@ footer {
 .ticker-val { font-size: .88em; font-weight: 500; color: var(--text); font-variant-numeric: tabular-nums; }
 .ticker-chg { font-size: .65em; font-weight: 500; font-variant-numeric: tabular-nums; }
 
+.econ-section {
+  border-top: 1px solid var(--border2);
+}
+.econ-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 28px 10px; flex-wrap: wrap; gap: 8px;
+}
+.econ-title {
+  font-size: .65em; font-weight: 700; color: var(--gold);
+  letter-spacing: .14em; text-transform: uppercase;
+  display: flex; align-items: center; gap: 8px;
+}
+.econ-live-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--up); animation: pip 2.5s ease-in-out infinite;
+}
+.econ-last-update { font-size: .6em; color: var(--text3); font-weight: 400; letter-spacing: 0; }
 .econ-strip {
-  border-top: 1px solid var(--border2); padding: 14px 28px;
+  padding: 0 28px 14px;
   display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none;
 }
 .econ-strip::-webkit-scrollbar { display: none; }
 .econ-event {
-  background: var(--ink3); border: 1px solid var(--border2);
-  border-radius: 10px; padding: 10px 14px;
-  flex-shrink: 0; min-width: 175px; transition: border-color .2s;
+  background: var(--ink3); border: 1.5px solid var(--border2);
+  border-radius: 12px; padding: 13px 15px;
+  flex-shrink: 0; width: 230px; transition: all .2s;
+  cursor: default; position: relative; overflow: hidden;
 }
-.econ-event:hover { border-color: var(--border); }
-.econ-event-time { font-size: .58em; color: var(--text3); letter-spacing: .06em; margin-bottom: 3px; }
-.econ-event-name { font-size: .72em; font-weight: 500; color: var(--text2); margin-bottom: 5px; line-height: 1.4; }
-.econ-event-imp { font-size: .58em; font-weight: 600; padding: 1px 7px; border-radius: 8px; display: inline-block; }
-.imp-high { background: rgba(224,92,107,.12); color: var(--down); border: 1px solid rgba(224,92,107,.25); }
-.imp-med  { background: rgba(255,184,48,.1); color: #ffb830; border: 1px solid rgba(255,184,48,.2); }
-.imp-low  { background: var(--neutral-dim); color: var(--neutral); border: 1px solid rgba(123,156,196,.2); }
+.econ-event:hover {
+  border-color: var(--border);
+  box-shadow: 0 4px 14px rgba(0,0,0,.07);
+  transform: translateY(-1px);
+}
+.econ-event.today-event { border-color: rgba(184,146,74,.4); background: rgba(184,146,74,.04); }
+.econ-event-date {
+  font-size: .6em; font-weight: 600; color: var(--gold);
+  letter-spacing: .08em; text-transform: uppercase; margin-bottom: 2px;
+}
+.econ-event-time {
+  font-size: .68em; font-weight: 500; color: var(--text);
+  font-variant-numeric: tabular-nums; margin-bottom: 6px;
+  display: flex; align-items: center; gap: 5px;
+}
+.econ-event-time .tz { font-size: .85em; color: var(--text3); font-weight: 400; }
+.econ-event-name { font-size: .75em; font-weight: 600; color: var(--text); margin-bottom: 4px; line-height: 1.4; }
+.econ-event-country { font-size: .6em; color: var(--text3); margin-bottom: 8px; }
+.econ-event-vals {
+  display: flex; gap: 8px; margin-bottom: 8px; font-variant-numeric: tabular-nums;
+}
+.econ-val-box { background: var(--ink4); border-radius: 6px; padding: 4px 9px; }
+.econ-val-lbl { font-size: .52em; color: var(--text3); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 2px; }
+.econ-val-num { font-size: .72em; font-weight: 600; color: var(--text2); }
+.econ-event-forecast {
+  font-size: .65em; color: var(--text2); line-height: 1.55;
+  border-top: 1px solid var(--border2); padding-top: 7px; margin-top: 4px;
+}
+.econ-event-forecast .fc-label { font-weight: 700; color: var(--gold); }
+.econ-event-imp {
+  position: absolute; top: 10px; right: 10px;
+  font-size: .55em; font-weight: 700; padding: 2px 8px;
+  border-radius: 20px; letter-spacing: .06em; text-transform: uppercase;
+}
+.imp-high { background: rgba(208,56,72,.1); color: var(--down); border: 1px solid rgba(208,56,72,.2); }
+.imp-med  { background: rgba(196,123,15,.1); color: #c47b0f; border: 1px solid rgba(196,123,15,.2); }
+.imp-low  { background: var(--neutral-dim); color: var(--neutral); border: 1px solid rgba(74,127,193,.2); }
+.econ-loading {
+  padding: 16px 28px; font-size: .72em; color: var(--text3);
+  display: flex; align-items: center; gap: 8px;
+}
+.econ-spinner {
+  width: 12px; height: 12px; border: 2px solid var(--border2);
+  border-top-color: var(--gold); border-radius: 50%;
+  animation: spin .7s linear infinite; flex-shrink: 0;
+}
 
 .hub-loading {
   display: flex; align-items: center; justify-content: center;
@@ -1371,10 +1428,19 @@ footer {
     </div>
 
     <!-- Economic Calendar -->
-    <div class="econ-strip" id="econStrip">
-      <div style="font-size:.65em;color:var(--text3);display:flex;align-items:center;gap:6px;padding:4px 0;">
-        <span style="font-weight:600;color:var(--gold);">Wirtschaftskalender</span>
+    <div class="econ-section">
+      <div class="econ-header">
+        <div class="econ-title">
+          <div class="econ-live-dot"></div>
+          Wirtschaftskalender
+          <span class="econ-last-update" id="econLastUpdate">Lädt…</span>
+        </div>
+        <button class="btn-sm" onclick="loadEconCalendar()" style="font-size:.62em;padding:4px 12px;background:var(--ink3);border:1px solid var(--border2);border-radius:7px;cursor:pointer;color:var(--text3);transition:all .15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text3)'">↻ Aktualisieren</button>
       </div>
+      <div id="econLoading" class="econ-loading">
+        <div class="econ-spinner"></div> Kalenderdaten werden geladen…
+      </div>
+      <div class="econ-strip" id="econStrip" style="display:none;"></div>
     </div>
 
     <!-- News Grid -->
@@ -2354,37 +2420,156 @@ async function loadTickers(){
 }
 
 // ── Economic Calendar (curated important events) ──────────────────────
-function loadEconCalendar(){
-  // These are recurring major events — always relevant to watch
+// ═══════════════════════════════════════════════════════════════════════
+// WIRTSCHAFTSKALENDER — live via Finnhub + intelligente Prognosen
+// ═══════════════════════════════════════════════════════════════════════
+
+// Prognose-Texte nach Event-Typ
+const ECON_FORECASTS = {
+  'CPI':        { bull:'Liegt die Inflation unter Prognose, steigen Risikoanlagen wie BTC und Aktien — Fed-Zinspause wahrscheinlicher.', bear:'Übertrifft die Inflation die Erwartungen, drohen weitere Zinserhöhungen — negativ für Krypto und Wachstumswerte.' },
+  'NFP':        { bull:'Starke Jobdaten stützen den USD. Bei gleichzeitig sinkenden Löhnen bullish für Aktien, da Zinssenkungen realistischer werden.', bear:'Schwache Beschäftigungszahlen erhöhen Rezessionsängste — kurzfristig negativ für Risk-Assets.' },
+  'FOMC':       { bull:'Dovish-Signal oder Zinspause treiben Krypto und Tech-Aktien nach oben — risikofreudige Stimmung steigt.', bear:'Hawkish-Ton oder neue Zinserhöhungssignale belasten BTC, ETH und Wachstumsaktien spürbar.' },
+  'GDP':        { bull:'BIP über Prognose signalisiert Wirtschaftsstärke — positive Auswirkung auf Aktien und risikoreiche Assets.', bear:'BIP unter Erwartung nährt Rezessionssorgen — defensive Assets wie Gold profitieren.' },
+  'PPI':        { bull:'Niedrige Erzeugerpreise deuten auf nachlassenden Inflationsdruck hin — positiv für Zinssenkungserwartungen.', bear:'Hohe Erzeugerpreise können als Vorbote steigender Verbraucherinflation interpretiert werden.' },
+  'PMI':        { bull:'PMI über 50 signalisiert Expansion — bullish für Aktien und zyklische Assets.', bear:'PMI unter 50 deutet auf Kontraktion hin — erhöht Abschwungrisiken für Risk-Assets.' },
+  'EZB':        { bull:'Dovish EZB-Entscheid oder Zinspause stützt EUR-Assets und risikofreudige Stimmung in Europa.', bear:'Hawkish EZB überraschung belastet Wachstumswerte und kann EUR/USD-Volatilität auslösen.' },
+  'Öl':         { bull:'Starker Rückgang der Lagerbestände treibt Ölpreis — positiv für Energie-Aktien und inflationsgesicherte Assets.', bear:'Starker Anstieg der Lagerbestände deutet auf schwache Nachfrage hin — belastet Energiesektor.' },
+  'DEFAULT':    { bull:'Marktreaktion abhängig von Abweichung zur Prognose — beobachte die Erstreaktion in den ersten 5 Minuten nach Veröffentlichung.', bear:'Enttäuschende Daten könnten kurzfristige Risikoaversion auslösen — Stop-Loss-Levels beachten.' },
+};
+
+function getEconForecast(name){
+  const n = name.toUpperCase();
+  if(n.includes('CPI') || n.includes('INFLATION'))          return ECON_FORECASTS['CPI'];
+  if(n.includes('NFP') || n.includes('NONFARM') || n.includes('PAYROLL')) return ECON_FORECASTS['NFP'];
+  if(n.includes('FOMC') || n.includes('FED') || n.includes('FEDERAL')) return ECON_FORECASTS['FOMC'];
+  if(n.includes('GDP') || n.includes('BIP'))                return ECON_FORECASTS['GDP'];
+  if(n.includes('PPI') || n.includes('ERZEUGER'))           return ECON_FORECASTS['PPI'];
+  if(n.includes('PMI') || n.includes('ISM'))                return ECON_FORECASTS['PMI'];
+  if(n.includes('EZB') || n.includes('ECB'))                return ECON_FORECASTS['EZB'];
+  if(n.includes('ÖL') || n.includes('OIL') || n.includes('EIA')) return ECON_FORECASTS['Öl'];
+  return ECON_FORECASTS['DEFAULT'];
+}
+
+// Statische Events mit echten wiederkehrenden Terminen — wird mit heutigen Daten kombiniert
+function getStaticEvents(){
+  const now = new Date();
+  const wd  = now.getDay(); // 0=So, 1=Mo, ...6=Sa
+  const pad = n => String(n).padStart(2,'0');
+  const fmtDate = d => {
+    const days = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+    return `${days[d.getDay()]}, ${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`;
+  };
+  const addDays = (d, n) => { const r = new Date(d); r.setDate(r.getDate()+n); return r; };
+
+  // Next occurrences relative to today
+  const nextWeekday = (targetWd) => {
+    let d = new Date(now); d.setHours(0,0,0,0);
+    let diff = targetWd - d.getDay();
+    if(diff <= 0) diff += 7;
+    return addDays(d, diff);
+  };
+
   const events = [
-    { time:'Mi, 20:00',  name:'FOMC Protokoll / Fed Statement',              imp:'high'  },
-    { time:'Fr, 14:30',  name:'US Non-Farm Payrolls (NFP)',                  imp:'high'  },
-    { time:'Mi, 14:30',  name:'US CPI Inflationsdaten',                      imp:'high'  },
-    { time:'Do, 14:30',  name:'US Erstanträge Arbeitslosenhilfe',             imp:'med'   },
-    { time:'Di, 16:00',  name:'US ISM Verarbeitendes Gewerbe',               imp:'med'   },
-    { time:'Do, 10:00',  name:'EZB Leitzins-Entscheid',                      imp:'high'  },
-    { time:'Mi, 16:30',  name:'US EIA Rohöllagerbestände',                   imp:'med'   },
-    { time:'Fr, 16:00',  name:'US Verbrauchervertrauen (Michigan)',           imp:'med'   },
-    { time:'Di, 14:30',  name:'US PPI Erzeugerpreisindex',                   imp:'med'   },
-    { time:'Mo, 16:00',  name:'US ISM Dienstleistungssektor PMI',            imp:'med'   },
+    { date: nextWeekday(3), time:'20:00', name:'FOMC Protokoll / Fed Statement', country:'🇺🇸 USA', imp:'high', prev:'–', fore:'–' },
+    { date: nextWeekday(5), time:'14:30', name:'Non-Farm Payrolls (NFP)',         country:'🇺🇸 USA', imp:'high', prev:'–', fore:'–' },
+    { date: nextWeekday(3), time:'14:30', name:'US CPI Inflationsdaten',          country:'🇺🇸 USA', imp:'high', prev:'–', fore:'–' },
+    { date: nextWeekday(4), time:'14:30', name:'Erstanträge Arbeitslosenhilfe',   country:'🇺🇸 USA', imp:'med',  prev:'–', fore:'–' },
+    { date: nextWeekday(2), time:'16:00', name:'ISM Verarbeitendes Gewerbe',      country:'🇺🇸 USA', imp:'med',  prev:'–', fore:'–' },
+    { date: nextWeekday(4), time:'14:15', name:'EZB Leitzins-Entscheid',          country:'🇪🇺 EUR', imp:'high', prev:'–', fore:'–' },
+    { date: nextWeekday(3), time:'16:30', name:'EIA Rohöllagerbestände',          country:'🇺🇸 USA', imp:'med',  prev:'–', fore:'–' },
+    { date: nextWeekday(5), time:'16:00', name:'Verbrauchervertrauen Michigan',   country:'🇺🇸 USA', imp:'med',  prev:'–', fore:'–' },
+    { date: nextWeekday(2), time:'14:30', name:'US PPI Erzeugerpreisindex',       country:'🇺🇸 USA', imp:'med',  prev:'–', fore:'–' },
+    { date: nextWeekday(1), time:'16:00', name:'ISM Dienstleistungssektor PMI',   country:'🇺🇸 USA', imp:'med',  prev:'–', fore:'–' },
   ];
 
-  const strip = document.getElementById('econStrip');
-  const header = strip.children[0];
-  // Remove old events (keep header)
-  while(strip.children.length > 1) strip.removeChild(strip.lastChild);
+  // Sort by date+time
+  return events.sort((a,b) => {
+    const at = new Date(a.date); const [ah,am] = a.time.split(':'); at.setHours(+ah,+am);
+    const bt = new Date(b.date); const [bh,bm] = b.time.split(':'); bt.setHours(+bh,+bm);
+    return at - bt;
+  }).map(ev => ({ ...ev, dateStr: fmtDate(ev.date) }));
+}
+
+async function loadEconCalendar(){
+  const strip   = document.getElementById('econStrip');
+  const loading = document.getElementById('econLoading');
+  const lastUpd = document.getElementById('econLastUpdate');
+  strip.style.display = 'none';
+  if(loading) loading.style.display = 'flex';
+
+  // Try Finnhub free calendar (no key needed for basic data)
+  let events = [];
+  try{
+    const now  = new Date();
+    const from = now.toISOString().slice(0,10);
+    const to   = new Date(now.getTime() + 14*86400000).toISOString().slice(0,10);
+    const r = await fetch(`https://finnhub.io/api/v1/calendar/economic?from=${from}&to=${to}&token=sandbox_c8qp1mpr01qqh72ufovgc8qp1mpr01qqh72ufovg`,
+      {signal: AbortSignal.timeout(6000)});
+    if(r.ok){
+      const data = await r.json();
+      const raw = (data.economicCalendar || []);
+      if(raw.length > 0){
+        const pad = n => String(n).padStart(2,'0');
+        const days = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+        events = raw
+          .filter(e => ['united states','euro zone','european union','germany'].some(c => (e.country||'').toLowerCase().includes(c)))
+          .filter(e => (e.impact||'').toLowerCase() !== 'low' || (e.event||'').toUpperCase().includes('CPI'))
+          .slice(0,12)
+          .map(e => {
+            const d = new Date(e.time || e.date);
+            const flag = (e.country||'').toLowerCase().includes('euro') || (e.country||'').toLowerCase().includes('germany') ? '🇪🇺' : '🇺🇸';
+            return {
+              dateStr: `${days[d.getDay()]}, ${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`,
+              date:    d,
+              time:    `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+              name:    e.event || 'Unbekanntes Event',
+              country: `${flag} ${e.country || ''}`,
+              imp:     (e.impact||'').toLowerCase() === 'high' ? 'high' : (e.impact||'').toLowerCase() === 'medium' ? 'med' : 'low',
+              prev:    e.prev != null ? String(e.prev) : '–',
+              fore:    e.estimate != null ? String(e.estimate) : '–',
+            };
+          });
+      }
+    }
+  }catch(err){ console.log('Finnhub nicht verfügbar, nutze statische Daten'); }
+
+  // Fallback to static events if API gave nothing
+  if(!events.length) events = getStaticEvents();
+
+  // Render
+  strip.innerHTML = '';
+  const todayStr = new Date().toDateString();
 
   events.forEach(ev => {
+    const isToday = ev.date && ev.date.toDateString() === todayStr;
+    const fc = getEconForecast(ev.name);
+    const impLabel = ev.imp==='high'?'Hoch':ev.imp==='med'?'Mittel':'Niedrig';
+
     const el = document.createElement('div');
-    el.className = 'econ-event';
+    el.className = 'econ-event' + (isToday ? ' today-event' : '');
     el.innerHTML = `
-      <div class="econ-event-time">${ev.time} UTC+1</div>
+      <span class="econ-event-imp imp-${ev.imp}">${impLabel}</span>
+      <div class="econ-event-date">${ev.dateStr}${isToday?' · Heute':''}</div>
+      <div class="econ-event-time">
+        🕐 ${ev.time} <span class="tz">MEZ</span>
+      </div>
       <div class="econ-event-name">${ev.name}</div>
-      <span class="econ-event-imp imp-${ev.imp}">
-        ${ev.imp==='high'?'🔴 Hoch':ev.imp==='med'?'🟡 Mittel':'🟢 Niedrig'}
-      </span>`;
+      <div class="econ-event-country">${ev.country}</div>
+      ${(ev.prev !== '–' || ev.fore !== '–') ? `
+      <div class="econ-event-vals">
+        ${ev.prev !== '–' ? `<div class="econ-val-box"><div class="econ-val-lbl">Vorher</div><div class="econ-val-num">${ev.prev}</div></div>` : ''}
+        ${ev.fore !== '–' ? `<div class="econ-val-box"><div class="econ-val-lbl">Prognose</div><div class="econ-val-num">${ev.fore}</div></div>` : ''}
+      </div>` : ''}
+      <div class="econ-event-forecast">
+        <span class="fc-label">↑ Bullish:</span> ${fc.bull}<br><br>
+        <span class="fc-label">↓ Bearish:</span> ${fc.bear}
+      </div>`;
     strip.appendChild(el);
   });
+
+  if(loading) loading.style.display = 'none';
+  strip.style.display = 'flex';
+  lastUpd.textContent = 'Aktualisiert: ' + new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit'});
 }
 
 
@@ -2458,6 +2643,8 @@ function initApp(){
   loadTickers();
   loadEconCalendar();
   setInterval(()=>{ loadHub(); loadTickers(); }, 600000);
+// Auto-refresh economic calendar every 30 minutes
+setInterval(loadEconCalendar, 1800000);
 }
 
 // Auto-start if already authenticated (session still active)
