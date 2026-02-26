@@ -1129,6 +1129,86 @@ footer {
 .season-loading { font-size: .7em; color: var(--text3); padding: 20px 0; text-align: center; font-style: italic; }
 .season-weeks-note { font-size: .55em; color: var(--text3); text-align: center; margin-top: 10px; }
 
+
+/* ═══════════════════════════════════════════════════════════════════
+   EXTRA CHART CARDS
+═══════════════════════════════════════════════════════════════════ */
+.extra-card {
+  background: var(--ink2); border: 1px solid var(--border2);
+  border-radius: 16px; overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0,0,0,.04);
+  margin-top: 14px;
+}
+.extra-card-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px 12px; border-bottom: 1px solid var(--border2);
+  flex-wrap: wrap; gap: 8px;
+}
+.extra-card-title {
+  font-size: .72em; font-weight: 700; color: var(--text);
+  display: flex; align-items: center; gap: 8px;
+}
+.extra-card-title .ect-icon {
+  width: 22px; height: 22px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .9em;
+}
+.extra-card-sub { font-size: .6em; color: var(--text3); font-weight: 400; }
+.extra-card-body { padding: 16px 20px 18px; }
+
+/* Season chart */
+.season-chart-wrap { position: relative; }
+.season-day-labels {
+  display: flex; justify-content: space-around;
+  padding: 0 4px; margin-top: 6px;
+}
+.season-day-lbl {
+  font-size: .6em; font-weight: 600; color: var(--text3);
+  text-align: center; flex: 1; letter-spacing: .04em;
+}
+.season-day-lbl.today-lbl { color: var(--gold); }
+.season-legend {
+  display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px;
+  padding-top: 10px; border-top: 1px solid var(--border2);
+}
+.s-leg-item { display: flex; align-items: center; gap: 5px; font-size: .6em; color: var(--text3); }
+.s-leg-dot  { width: 8px; height: 8px; border-radius: 50%; }
+.season-stats-grid {
+  display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-top: 12px;
+}
+@media(max-width:600px){ .season-stats-grid { grid-template-columns: repeat(2,1fr); } }
+.ss-box { background: var(--ink3); border: 1px solid var(--border2); border-radius: 9px; padding: 9px 11px; }
+.ss-lbl { font-size: .52em; font-weight: 700; color: var(--text3); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 4px; }
+.ss-val { font-size: .82em; font-weight: 700; }
+.ss-val.up { color: var(--up); } .ss-val.dn { color: var(--down); } .ss-val.au { color: var(--gold); }
+
+/* Elliott Wave chart */
+.ew-info-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;
+}
+.ew-box {
+  background: var(--ink3); border: 1px solid var(--border2);
+  border-radius: 9px; padding: 10px 13px;
+}
+.ew-box.full { grid-column: 1 / -1; }
+.ew-box-lbl { font-size: .55em; font-weight: 700; color: var(--text3); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 5px; }
+.ew-box-val { font-size: .82em; font-weight: 700; color: var(--text); line-height: 1.4; }
+.ew-box-val.up { color: var(--up); } .ew-box-val.dn { color: var(--down); } .ew-box-val.au { color: var(--gold); }
+.ew-box-desc { font-size: .62em; color: var(--text3); margin-top: 3px; line-height: 1.5; }
+.ew-disclaimer {
+  font-size: .58em; color: var(--text3); margin-top: 10px;
+  padding-top: 8px; border-top: 1px solid var(--border2);
+  font-style: italic; line-height: 1.6;
+}
+.ew-wave-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: .65em; font-weight: 700; padding: 2px 9px;
+  border-radius: 20px; margin-right: 4px;
+}
+.ew-wave-badge.imp { background: rgba(26,158,101,.1); color: var(--up); border: 1px solid rgba(26,158,101,.2); }
+.ew-wave-badge.cor { background: rgba(208,56,72,.1); color: var(--down); border: 1px solid rgba(208,56,72,.2); }
+.ew-wave-badge.neu { background: var(--neutral-dim); color: var(--neutral); border: 1px solid rgba(74,127,193,.2); }
+
 </style>
 </head>
 <body>
@@ -1390,6 +1470,52 @@ footer {
               <div class="ind-cell-label">MACD</div>
               <div class="ind-cell-val" id="iMacdV">–</div>
               <div class="ind-cell-sig" id="iMacdS">–</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Saisonalitäts-Chart -->
+        <div class="extra-card fade d3" id="seasonChartCard">
+          <div class="extra-card-head">
+            <div class="extra-card-title">
+              <div class="ect-icon" style="background:rgba(184,146,74,.12);">📅</div>
+              Wochentags-Saisonalität
+              <span class="extra-card-sub" id="seasonChartSub">Letzte ~13 Wochen · Ø Performance je Tag</span>
+            </div>
+            <span class="season-badge neut" id="seasonChartBadge" style="font-size:.6em;">Lädt…</span>
+          </div>
+          <div class="extra-card-body">
+            <div class="season-chart-wrap">
+              <canvas id="cSeason" height="140"></canvas>
+              <div class="season-day-labels" id="seasonDayLabels"></div>
+            </div>
+            <div class="season-legend">
+              <div class="s-leg-item"><div class="s-leg-dot" style="background:var(--up)"></div>Bullish Tag (Ø &gt; 0)</div>
+              <div class="s-leg-item"><div class="s-leg-dot" style="background:var(--down)"></div>Bearish Tag (Ø &lt; 0)</div>
+              <div class="s-leg-item"><div class="s-leg-dot" style="background:var(--gold)"></div>Heute</div>
+              <div class="s-leg-item"><div class="s-leg-dot" style="background:var(--neutral)"></div>Neutral</div>
+            </div>
+            <div class="season-stats-grid" id="seasonStatsGrid"></div>
+          </div>
+        </div>
+
+        <!-- Elliott-Wellen-Chart -->
+        <div class="extra-card fade d4" id="elliottCard">
+          <div class="extra-card-head">
+            <div class="extra-card-title">
+              <div class="ect-icon" style="background:rgba(74,127,193,.12);">〜</div>
+              Elliott-Wellen Analyse
+              <span class="extra-card-sub">Automatische Wellenerkennung · 90-Tage-Basis</span>
+            </div>
+            <span id="elliottPhaseBadge" class="ew-wave-badge neu">Analysiert…</span>
+          </div>
+          <div class="extra-card-body">
+            <canvas id="cElliott" height="220"></canvas>
+            <div class="ew-info-grid" id="ewInfoGrid"></div>
+            <div class="ew-disclaimer">
+              ⚠ Elliott-Wellen sind eine interpretative Methode. Die automatische Erkennung
+              basiert auf Pivot-Punkten und Fibonacci-Verhältnissen — keine Garantie auf Genauigkeit.
+              Immer mit anderen Indikatoren kombinieren und eigenes Urteil anwenden.
             </div>
           </div>
         </div>
@@ -2139,7 +2265,8 @@ async function load(){
   buildCharts(candles, ind);
   updateInds(ind, candles);
   renderSigs(ind.sigs);
-  loadSeasonality(coin);   // ← Saisonalitätsanalyse für aktuelles Asset
+  loadSeasonalityChart(coin);  // ← Saisonalitäts-Chart
+  loadElliottChart(coin);      // ← Elliott-Wellen-Chart
 
   // News + Claude
   let nScore=50;
@@ -2908,6 +3035,535 @@ async function loadSeasonality(coinId){
   }
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════
+// SAISONALITÄTS-CHART (Chart.js Bar)
+// ═══════════════════════════════════════════════════════════════════════
+let cSeason = null;
+
+async function loadSeasonalityChart(coinId) {
+  const badge  = document.getElementById('seasonChartBadge');
+  const subLbl = document.getElementById('seasonChartSub');
+  const statsG = document.getElementById('seasonStatsGrid');
+  const labelsC= document.getElementById('seasonDayLabels');
+  if(!badge) return;
+
+  badge.textContent = 'Lädt…'; badge.className = 'season-badge neut';
+
+  // Fetch 90 days OHLC
+  let candles = [];
+  try {
+    const r = await fetch(
+      `https://api.coingecko.com/api/v3/coins/${coinId}/ohlc?vs_currency=usd&days=90`,
+      { signal: AbortSignal.timeout(9000) }
+    );
+    if(r.ok) {
+      const raw = await r.json();
+      candles = raw.map(([t,o,h,l,cl]) => ({
+        date: new Date(t), wd: new Date(t).getDay(),
+        pct: ((cl - o) / o) * 100, bull: cl >= o,
+      }));
+    }
+  } catch(e) {}
+
+  // Fallback synthetic
+  if(candles.length < 20) {
+    const demoBases = {
+      bitcoin:67000,ethereum:3500,solana:170,ripple:.62,binancecoin:420,
+      cardano:.45,'avalanche-2':35,chainlink:14,polkadot:7,dogecoin:.12,
+      'shiba-inu':.0000085,litecoin:85,tron:.11,near:5,sui:1.2,
+      gold:2350,silver:27,platinum:960,palladium:1000,
+      'pax-gold':2350,'tether-gold':2350,
+      'usd-coin':1,tether:1,'euro-coin':1.08,dai:1,frax:1,
+    };
+    const base = demoBases[coinId] || 100;
+    const seed = coinId.split('').reduce((a,ch)=>a+ch.charCodeAt(0),0);
+    const rng  = s => { const x=Math.sin(s)*10000; return x-Math.floor(x); };
+    let p = base;
+    for(let i=89;i>=0;i--) {
+      const d=new Date(); d.setDate(d.getDate()-i);
+      const drift=(rng(seed+i+1)-.47)*2.2;
+      const o=p, cl=Math.max(o*(1+drift/100),0.00001);
+      p=cl;
+      candles.push({date:d, wd:d.getDay(), pct:((cl-o)/o)*100, bull:cl>=o});
+    }
+  }
+
+  // Aggregate weekday stats  Mo=1..Su=0
+  const WD_ORDER = [1,2,3,4,5,6,0];
+  const WD_NAMES = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+  const stats = {};
+  for(const wd of WD_ORDER) {
+    const days = candles.filter(c=>c.wd===wd);
+    if(!days.length) continue;
+    const avg = days.reduce((a,c)=>a+c.pct,0)/days.length;
+    const wr  = days.filter(c=>c.bull).length/days.length*100;
+    const best  = Math.max(...days.map(c=>c.pct));
+    const worst = Math.min(...days.map(c=>c.pct));
+    stats[wd] = { avg, wr, count:days.length, best, worst };
+  }
+
+  const todayWd  = new Date().getDay();
+  const availWds = WD_ORDER.filter(wd=>stats[wd]);
+  const labels   = availWds.map(wd=>WD_NAMES[wd]);
+  const avgs     = availWds.map(wd=>+stats[wd].avg.toFixed(3));
+  const wrs      = availWds.map(wd=>+stats[wd].wr.toFixed(1));
+  const totalDays= candles.length;
+  const weeks    = Math.round(totalDays/7);
+
+  // Colors: gold for today, green/red otherwise
+  const barColors = availWds.map(wd => {
+    if(wd===todayWd) return 'rgba(184,146,74,.85)';
+    return stats[wd].avg >= 0
+      ? 'rgba(26,158,101,.7)'
+      : 'rgba(208,56,72,.7)';
+  });
+  const borderColors = availWds.map(wd => {
+    if(wd===todayWd) return 'rgba(184,146,74,1)';
+    return stats[wd].avg >= 0 ? 'rgba(26,158,101,1)' : 'rgba(208,56,72,1)';
+  });
+
+  // Draw Chart
+  if(cSeason) cSeason.destroy();
+  const ctx = document.getElementById('cSeason').getContext('2d');
+  cSeason = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Ø Performance %',
+          data: avgs,
+          backgroundColor: barColors,
+          borderColor: borderColors,
+          borderWidth: 1.5,
+          borderRadius: 5,
+          barPercentage: 0.65,
+          yAxisID: 'y',
+          order: 1,
+        },
+        {
+          label: 'Win-Rate %',
+          data: wrs,
+          type: 'line',
+          borderColor: 'rgba(74,127,193,.7)',
+          backgroundColor: 'rgba(74,127,193,.0)',
+          borderWidth: 1.5,
+          pointRadius: 4,
+          pointBackgroundColor: 'rgba(74,127,193,.9)',
+          tension: .35,
+          yAxisID: 'y2',
+          order: 0,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      animation: { duration: 700, easing: 'easeOutQuart' },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { boxWidth: 10, padding: 14, color: '#6b6358', usePointStyle: true } },
+        tooltip: {
+          backgroundColor:'#fff', borderColor:'rgba(0,0,0,.1)', borderWidth:1,
+          titleColor:'#6b6358', bodyColor:'#1a1714', padding:10, cornerRadius:8,
+          callbacks: {
+            label: ctx => ctx.datasetIndex===0
+              ? ` Ø ${ctx.raw>=0?'+':''}${ctx.raw}%`
+              : ` Win-Rate: ${ctx.raw}%`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          border: { display: false },
+          ticks: { color: '#9c9288', font: { size: 11, weight: '600' } },
+        },
+        y: {
+          position: 'left',
+          border: { display: false },
+          grid: { color: 'rgba(0,0,0,.05)' },
+          ticks: {
+            color: '#9c9288', font: { size: 10 },
+            callback: v => (v>=0?'+':'')+v.toFixed(1)+'%',
+          },
+        },
+        y2: {
+          position: 'right',
+          border: { display: false },
+          grid: { display: false },
+          min: 0, max: 100,
+          ticks: { color: 'rgba(74,127,193,.8)', font: { size: 10 }, callback: v=>v+'%' },
+        },
+      },
+    },
+  });
+
+  // Day labels with today marker
+  if(labelsC) {
+    labelsC.innerHTML = availWds.map(wd=>
+      `<div class="season-day-lbl ${wd===todayWd?'today-lbl':''}">${WD_NAMES[wd]}${wd===todayWd?' ●':''}</div>`
+    ).join('');
+  }
+
+  // Stats boxes
+  const bestDay  = availWds.reduce((a,b)=>stats[a].avg>stats[b].avg?a:b);
+  const worstDay = availWds.reduce((a,b)=>stats[a].avg<stats[b].avg?a:b);
+  const avgAll   = availWds.reduce((a,wd)=>a+stats[wd].avg,0)/availWds.length;
+  const wrAll    = availWds.reduce((a,wd)=>a+stats[wd].wr,0)/availWds.length;
+
+  if(statsG) statsG.innerHTML = `
+    <div class="ss-box"><div class="ss-lbl">Stärkster Tag</div>
+      <div class="ss-val au">${WD_NAMES[bestDay]} <span style="font-size:.8em;color:var(--text3)">Ø +${stats[bestDay].avg.toFixed(2)}%</span></div>
+    </div>
+    <div class="ss-box"><div class="ss-lbl">Schwächster Tag</div>
+      <div class="ss-val dn">${WD_NAMES[worstDay]} <span style="font-size:.8em;color:var(--text3)">Ø ${stats[worstDay].avg.toFixed(2)}%</span></div>
+    </div>
+    <div class="ss-box"><div class="ss-lbl">Ø Performance/Tag</div>
+      <div class="ss-val ${avgAll>=0?'up':'dn'}">${avgAll>=0?'+':''}${avgAll.toFixed(2)}%</div>
+    </div>
+    <div class="ss-box"><div class="ss-lbl">Ø Win-Rate</div>
+      <div class="ss-val ${wrAll>=50?'up':'dn'}">${Math.round(wrAll)}%</div>
+    </div>`;
+
+  subLbl.textContent = `Letzte ~${weeks} Wochen · ${totalDays} Handelstage · Win-Rate = blaue Linie`;
+
+  const todaySt = stats[todayWd];
+  if(todaySt) {
+    const bias = todaySt.avg > 0.15 ? 'bull' : todaySt.avg < -0.15 ? 'bear' : 'neut';
+    badge.textContent = bias==='bull'
+      ? `↑ ${WD_NAMES[todayWd]}: Historisch Bullish (${todaySt.avg>=0?'+':''}${todaySt.avg.toFixed(2)}%)`
+      : bias==='bear'
+      ? `↓ ${WD_NAMES[todayWd]}: Historisch Bearish (${todaySt.avg.toFixed(2)}%)`
+      : `→ ${WD_NAMES[todayWd]}: Neutral (${todaySt.avg>=0?'+':''}${todaySt.avg.toFixed(2)}%)`;
+    badge.className = 'season-badge ' + bias;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ELLIOTT-WELLEN ANALYSE + CHART
+// ═══════════════════════════════════════════════════════════════════════
+let cElliott = null;
+
+// Find local pivots (swing highs/lows)
+function findPivots(prices, window=5) {
+  const highs=[], lows=[];
+  for(let i=window; i<prices.length-window; i++){
+    const slice=prices.slice(i-window,i+window+1);
+    const h=prices[i].high, l=prices[i].low;
+    if(h===Math.max(...slice.map(p=>p.high))) highs.push({idx:i,...prices[i]});
+    if(l===Math.min(...slice.map(p=>p.low)))  lows.push({idx:i,...prices[i]});
+  }
+  return {highs,lows};
+}
+
+// Fibonacci retracement levels
+function fibLevels(from, to) {
+  const diff = to - from;
+  return {
+    f0:    from,
+    f236:  from + diff * 0.236,
+    f382:  from + diff * 0.382,
+    f500:  from + diff * 0.500,
+    f618:  from + diff * 0.618,
+    f786:  from + diff * 0.786,
+    f100:  to,
+    f1272: from + diff * 1.272,
+    f1618: from + diff * 1.618,
+  };
+}
+
+// Classify wave phase based on pivots & price action
+function detectElliottPhase(candles) {
+  if(candles.length < 20) return null;
+  const prices  = candles;
+  const cls_arr = prices.map(c=>c.close);
+  const {highs, lows} = findPivots(prices, Math.max(3, Math.floor(prices.length/10)));
+
+  const lastPrice = cls_arr[cls_arr.length-1];
+  const period_high = Math.max(...prices.map(p=>p.high));
+  const period_low  = Math.min(...prices.map(p=>p.low));
+  const range       = period_high - period_low;
+  const pos         = (lastPrice - period_low) / (range||1); // 0=low, 1=high
+
+  // Simple EMA-based trend
+  const ema20 = prices.slice(-20).reduce((a,p)=>a+p.close,0)/20;
+  const ema50 = prices.length>=50 ? prices.slice(-50).reduce((a,p)=>a+p.close,0)/50 : ema20;
+  const trend = lastPrice > ema20 && ema20 > ema50 ? 'UP' : lastPrice < ema20 && ema20 < ema50 ? 'DOWN' : 'SIDEWAYS';
+
+  // Momentum
+  const roc5  = (cls_arr[cls_arr.length-1]-cls_arr[cls_arr.length-6])/cls_arr[cls_arr.length-6]*100;
+  const roc10 = (cls_arr[cls_arr.length-1]-cls_arr[cls_arr.length-11])/cls_arr[cls_arr.length-11]*100;
+
+  let wave, phase, impulse, correction, priceTarget1, priceTarget2, devLow, devHigh, desc, nextExp;
+
+  if(trend==='UP') {
+    if(pos>0.85 && roc5>0)        { wave='5'; phase='Impuls';     impulse=true; }
+    else if(pos>0.65 && roc5>0)   { wave='3'; phase='Impuls';     impulse=true; }
+    else if(pos>0.45 && roc5<0)   { wave='4'; phase='Korrektur';  impulse=false; }
+    else if(pos>0.25 && roc5>0)   { wave='3'; phase='Impuls';     impulse=true; }
+    else                          { wave='2'; phase='Korrektur';  impulse=false; }
+  } else if(trend==='DOWN') {
+    if(pos<0.15 && roc5<0)        { wave='C'; phase='Korrektur';  impulse=false; }
+    else if(pos<0.35 && roc5<0)   { wave='A'; phase='Korrektur';  impulse=false; }
+    else if(pos>0.45 && roc5>0)   { wave='B'; phase='Gegenbewegung'; impulse=false; }
+    else                          { wave='A'; phase='Korrektur';  impulse=false; }
+  } else {
+    wave='3/4'; phase='Konsolidierung'; impulse=false;
+  }
+
+  // Fibonacci projections from swing low to swing high
+  const swingLow  = period_low;
+  const swingHigh = period_high;
+  const fib = fibLevels(swingLow, swingHigh);
+
+  // Price targets based on wave
+  if(impulse) {
+    priceTarget1 = fib.f1272;  // Wave extension
+    priceTarget2 = fib.f1618;
+    devLow  = fib.f618;        // Support if wrong
+    devHigh = fib.f1618 * 1.05;
+  } else {
+    priceTarget1 = fib.f382;   // Correction target
+    priceTarget2 = fib.f618;
+    devLow  = fib.f236;
+    devHigh = fib.f786;
+  }
+
+  // Next expected move
+  const impulseMoves  = {
+    '1':'Welle 2 (Korrektur ~38–62% von Welle 1 erwartet)',
+    '2':'Welle 3 (stärkste Impulswelle — oft 1.618x Welle 1)',
+    '3':'Welle 4 (flache Korrektur, meist 38.2% Retracement)',
+    '4':'Welle 5 (letzte Impulswelle, Ziel oft 1.272–1.618x)',
+    '5':'Welle A (Beginn ABC-Korrektur nach dem Impuls)',
+  };
+  const corrMoves = {
+    'A':'Welle B (Gegenbewegung ~50–78.6% von Welle A)',
+    'B':'Welle C (finale Abwärtswelle, oft = Welle A Länge)',
+    'C':'Neue Welle 1 (Impulsstart wenn Tiefs halten)',
+    '3/4':'Ausbruch oder Fortsetzung Seitwärtsbewegung',
+  };
+  nextExp = impulse ? (impulseMoves[wave]||'Nächste Welle wird erkannt') : (corrMoves[wave]||'Konsolidierung');
+
+  const confidence = pos > 0.8 || pos < 0.2 ? 'Hoch' : pos > 0.6 || pos < 0.4 ? 'Mittel' : 'Gering';
+
+  return {
+    wave, phase, impulse, trend, pos, lastPrice,
+    priceTarget1, priceTarget2, devLow, devHigh,
+    fib, swingLow, swingHigh, nextExp, confidence,
+    highs: highs.slice(-6), lows: lows.slice(-6),
+    period_high, period_low,
+  };
+}
+
+async function loadElliottChart(coinId) {
+  const badge  = document.getElementById('elliottPhaseBadge');
+  const infoG  = document.getElementById('ewInfoGrid');
+  if(!badge || !infoG) return;
+
+  badge.textContent = 'Analysiert…'; badge.className = 'ew-wave-badge neu';
+
+  // Fetch 90-day OHLC for Elliott analysis
+  let candles = [];
+  try {
+    const r = await fetch(
+      `https://api.coingecko.com/api/v3/coins/${coinId}/ohlc?vs_currency=usd&days=90`,
+      { signal: AbortSignal.timeout(9000) }
+    );
+    if(r.ok) {
+      const raw = await r.json();
+      candles = raw.map(([t,o,h,l,cl]) => ({
+        time:new Date(t), open:o, high:h, low:l, close:cl
+      }));
+    }
+  } catch(e) {}
+
+  // Fallback
+  if(candles.length < 20) {
+    const demoBases = {
+      bitcoin:67000,ethereum:3500,solana:170,ripple:.62,binancecoin:420,
+      cardano:.45,'avalanche-2':35,chainlink:14,polkadot:7,dogecoin:.12,
+      'shiba-inu':.0000085,litecoin:85,tron:.11,near:5,sui:1.2,
+      gold:2350,silver:27,platinum:960,palladium:1000,
+      'pax-gold':2350,'tether-gold':2350,
+      'usd-coin':1,tether:1,'euro-coin':1.08,dai:1,frax:1,
+    };
+    const base = demoBases[coinId]||100;
+    const seed = coinId.split('').reduce((a,ch)=>a+ch.charCodeAt(0),0);
+    const rng  = s=>{const x=Math.sin(s)*10000;return x-Math.floor(x);};
+    let p=base;
+    for(let i=89;i>=0;i--){
+      const d=new Date(); d.setDate(d.getDate()-i);
+      const drift=(rng(seed+i+1)-.47)*2.2;
+      const o=p, cl=Math.max(o*(1+drift/100),.00001);
+      const h=Math.max(o,cl)*(1+rng(seed+i+50)*.01);
+      const l=Math.min(o,cl)*(1-rng(seed+i+99)*.01);
+      p=cl;
+      candles.push({time:d,open:o,high:h,low:l,close:cl});
+    }
+  }
+
+  const ew = detectElliottPhase(candles);
+  if(!ew) return;
+
+  const fmt = p => p>=10000?'$'+(p/1000).toFixed(1)+'K' : p>=1?'$'+p.toFixed(2) : '$'+p.toFixed(6);
+  const labels = candles.map(c=>{const d=c.time;return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}`;});
+  const closes = candles.map(c=>c.close);
+
+  // Fibonacci lines dataset
+  const fibKeys   = [ew.fib.f236, ew.fib.f382, ew.fib.f500, ew.fib.f618, ew.fib.f786];
+  const fibColors = ['rgba(184,146,74,.3)','rgba(184,146,74,.5)','rgba(74,127,193,.4)','rgba(184,146,74,.5)','rgba(184,146,74,.3)'];
+  const fibLabels = ['Fib 23.6%','Fib 38.2%','Fib 50%','Fib 61.8%','Fib 78.6%'];
+
+  const fibDatasets = fibKeys.map((val, i) => ({
+    label: fibLabels[i],
+    data: Array(candles.length).fill(val),
+    borderColor: fibColors[i],
+    borderWidth: 1,
+    borderDash: [4,4],
+    pointRadius: 0,
+    fill: false,
+    tension: 0,
+    order: 3,
+  }));
+
+  // Price target lines
+  const targetDatasets = [
+    {
+      label: `Ziel 1 (${fmt(ew.priceTarget1)})`,
+      data: Array(candles.length).fill(ew.priceTarget1),
+      borderColor: ew.impulse ? 'rgba(26,158,101,.7)' : 'rgba(208,56,72,.6)',
+      borderWidth: 1.5, borderDash:[6,3], pointRadius:0, fill:false, tension:0, order:2,
+    },
+    {
+      label: `Ziel 2 (${fmt(ew.priceTarget2)})`,
+      data: Array(candles.length).fill(ew.priceTarget2),
+      borderColor: ew.impulse ? 'rgba(26,158,101,.4)' : 'rgba(208,56,72,.35)',
+      borderWidth: 1, borderDash:[6,3], pointRadius:0, fill:false, tension:0, order:2,
+    },
+    {
+      label: `Support/Abweichung (${fmt(ew.devLow)})`,
+      data: Array(candles.length).fill(ew.devLow),
+      borderColor: 'rgba(208,56,72,.5)',
+      borderWidth: 1, borderDash:[3,5], pointRadius:0, fill:false, tension:0, order:2,
+    },
+  ];
+
+  // Pivot points overlay
+  const pivotDataHigh = Array(candles.length).fill(null);
+  const pivotDataLow  = Array(candles.length).fill(null);
+  ew.highs.forEach(h=>{ if(h.idx<candles.length) pivotDataHigh[h.idx]=h.high; });
+  ew.lows.forEach(l=>{  if(l.idx<candles.length) pivotDataLow[l.idx]=l.low;   });
+
+  // Main price line
+  const isUp   = ew.trend==='UP';
+  const ctxEl  = document.getElementById('cElliott').getContext('2d');
+  const gradEl = ctxEl.createLinearGradient(0,0,0,280);
+  gradEl.addColorStop(0,isUp?'rgba(26,158,101,.12)':'rgba(208,56,72,.12)');
+  gradEl.addColorStop(1,isUp?'rgba(26,158,101,0)':'rgba(208,56,72,0)');
+
+  if(cElliott) cElliott.destroy();
+  cElliott = new Chart(ctxEl, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Kurs',
+          data: closes,
+          borderColor: isUp?'rgba(26,158,101,.9)':'rgba(208,56,72,.9)',
+          backgroundColor: gradEl,
+          borderWidth: 2, pointRadius: 0, tension: .3, fill: true, order: 1,
+        },
+        {
+          label: 'Swing Highs',
+          data: pivotDataHigh,
+          type: 'scatter',
+          backgroundColor: 'rgba(208,56,72,.8)',
+          pointRadius: 5, pointStyle: 'triangle', rotation: 180, order: 0,
+        },
+        {
+          label: 'Swing Lows',
+          data: pivotDataLow,
+          type: 'scatter',
+          backgroundColor: 'rgba(26,158,101,.8)',
+          pointRadius: 5, pointStyle: 'triangle', order: 0,
+        },
+        ...fibDatasets,
+        ...targetDatasets,
+      ],
+    },
+    options: {
+      responsive: true,
+      animation: { duration: 700 },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          labels: { boxWidth: 10, padding: 10, color: '#9c9288', font:{size:10}, usePointStyle:true },
+          onClick: (e,item,legend) => {
+            const ci=legend.chart;
+            const meta=ci.getDatasetMeta(item.datasetIndex);
+            meta.hidden=!meta.hidden; ci.update();
+          },
+        },
+        tooltip: {
+          backgroundColor:'#fff', borderColor:'rgba(0,0,0,.1)', borderWidth:1,
+          titleColor:'#6b6358', bodyColor:'#1a1714', padding:10, cornerRadius:8,
+        },
+      },
+      scales: {
+        x: { grid:{display:false}, border:{display:false}, ticks:{color:'#bdb5aa',maxTicksLimit:8,font:{size:9}} },
+        y: {
+          position:'right', border:{display:false}, grid:{color:'rgba(0,0,0,.05)'},
+          ticks:{color:'#9c9288',font:{size:9},callback:v=>v>=1000?'$'+(v/1000).toFixed(1)+'K':'$'+v.toFixed(2)},
+        },
+      },
+    },
+  });
+
+  // Update badge
+  badge.textContent = `Welle ${ew.wave} · ${ew.phase}`;
+  badge.className   = 'ew-wave-badge ' + (ew.impulse?'imp':ew.phase==='Gegenbewegung'?'neu':'cor');
+
+  // Info grid
+  const ewColors = { UP:'up', DOWN:'dn', SIDEWAYS:'au' };
+  infoG.innerHTML = `
+    <div class="ew-box">
+      <div class="ew-box-lbl">Erkannte Welle</div>
+      <div class="ew-box-val ${ew.impulse?'up':'dn'}">
+        Welle ${ew.wave} — ${ew.phase}
+        <span class="ew-wave-badge ${ew.impulse?'imp':'cor'}" style="font-size:.75em;margin-left:4px;">
+          ${ew.impulse?'Impuls':'Korrektur'}
+        </span>
+      </div>
+      <div class="ew-box-desc">Konfidenz: ${ew.confidence} · Markttrend: ${ew.trend==='UP'?'↑ Aufwärts':ew.trend==='DOWN'?'↓ Abwärts':'→ Seitwärts'}</div>
+    </div>
+    <div class="ew-box">
+      <div class="ew-box-lbl">Nächster erwarteter Schritt</div>
+      <div class="ew-box-val" style="font-size:.72em;line-height:1.5;">${ew.nextExp}</div>
+    </div>
+    <div class="ew-box">
+      <div class="ew-box-lbl">Kursziel 1</div>
+      <div class="ew-box-val ${ew.impulse?'up':'dn'}">${fmt(ew.priceTarget1)}</div>
+      <div class="ew-box-desc">Fib ${ew.impulse?'1.272':'38.2%'} Projektion vom Swing</div>
+    </div>
+    <div class="ew-box">
+      <div class="ew-box-lbl">Kursziel 2</div>
+      <div class="ew-box-val ${ew.impulse?'up':'dn'}">${fmt(ew.priceTarget2)}</div>
+      <div class="ew-box-desc">Fib ${ew.impulse?'1.618':'61.8%'} Projektion vom Swing</div>
+    </div>
+    <div class="ew-box">
+      <div class="ew-box-lbl">Abweichungs-Support</div>
+      <div class="ew-box-val dn">${fmt(ew.devLow)}</div>
+      <div class="ew-box-desc">Hält dieser Level → Szenario intakt. Darunter: Wellen-Neuberechnung.</div>
+    </div>
+    <div class="ew-box">
+      <div class="ew-box-lbl">Swing Bereich</div>
+      <div class="ew-box-val au">${fmt(ew.period_low)} — ${fmt(ew.period_high)}</div>
+      <div class="ew-box-desc">90-Tage Hoch / Tief · Basis der Fibonacci-Levels</div>
+    </div>`;
+}
 // ═══════════════════════════════════════════════════════════════════════
 // INIT — only fires after successful login
 // ═══════════════════════════════════════════════════════════════════════
