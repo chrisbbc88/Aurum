@@ -1272,6 +1272,35 @@ footer {
 .refresh-label { white-space: nowrap; }
 .refresh-countdown { font-weight: 600; color: var(--text2); min-width: 28px; text-align:right; }
 
+
+/* Elliott Wave period selector */
+.ew-period-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 20px 0; flex-wrap: wrap;
+  border-top: 1px solid var(--border2);
+}
+.ew-period-label {
+  font-size: .6em; font-weight: 700; color: var(--text3);
+  letter-spacing: .1em; text-transform: uppercase; white-space: nowrap;
+}
+.ew-tf-group {
+  display: flex; gap: 4px;
+}
+.ew-tf-btn {
+  background: var(--ink3); border: 1px solid var(--border2);
+  border-radius: 7px; padding: 4px 12px;
+  font-family: 'Outfit', sans-serif; font-size: .65em; font-weight: 600;
+  color: var(--text3); cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.ew-tf-btn:hover { color: var(--text); border-color: var(--border); }
+.ew-tf-btn.active {
+  background: var(--gold); border-color: var(--gold);
+  color: #fff; box-shadow: 0 2px 8px rgba(184,146,74,.3);
+}
+.ew-period-note {
+  font-size: .58em; color: var(--text3); font-style: italic;
+}
+
 </style>
 </head>
 <body>
@@ -1576,17 +1605,29 @@ footer {
             <div class="extra-card-title">
               <div class="ect-icon" style="background:rgba(74,127,193,.12);">〜</div>
               Elliott-Wellen Analyse
-              <span class="extra-card-sub">Automatische Wellenerkennung · 90-Tage-Basis</span>
+              <span class="extra-card-sub" id="ewPeriodSub">12 Monate · Automatische Wellenerkennung</span>
             </div>
             <span id="elliottPhaseBadge" class="ew-wave-badge neu">Analysiert…</span>
           </div>
+          <!-- Zeitraum-Selector -->
+          <div class="ew-period-bar">
+            <span class="ew-period-label">Zeitraum:</span>
+            <div class="ew-tf-group" id="ewTfGroup">
+              <button class="ew-tf-btn" onclick="setEwPeriod(90)"  data-days="90">3M</button>
+              <button class="ew-tf-btn" onclick="setEwPeriod(180)" data-days="180">6M</button>
+              <button class="ew-tf-btn active" onclick="setEwPeriod(365)" data-days="365">1J</button>
+              <button class="ew-tf-btn" onclick="setEwPeriod(730)" data-days="730">2J</button>
+            </div>
+            <span class="ew-period-note" id="ewPeriodNote">Lädt…</span>
+          </div>
           <div class="extra-card-body">
-            <canvas id="cElliott" height="220"></canvas>
+            <canvas id="cElliott" height="240"></canvas>
             <div class="ew-info-grid" id="ewInfoGrid"></div>
             <div class="ew-disclaimer">
               ⚠ Elliott-Wellen sind eine interpretative Methode. Die automatische Erkennung
               basiert auf Pivot-Punkten und Fibonacci-Verhältnissen — keine Garantie auf Genauigkeit.
-              Immer mit anderen Indikatoren kombinieren und eigenes Urteil anwenden.
+              Längere Zeiträume zeigen übergeordnete Wellen-Strukturen deutlicher.
+              Immer mit anderen Indikatoren kombinieren.
             </div>
           </div>
         </div>
@@ -1846,19 +1887,223 @@ wSlider.addEventListener('input', e=>{
 // ═══════════════════════════════════════════════════════════════════════
 // DATA FETCHING
 // ═══════════════════════════════════════════════════════════════════════
-async function getCGOHLC(cg, days=1) {
-  const r = await fetch(`https://api.coingecko.com/api/v3/coins/${cg}/ohlc?vs_currency=usd&days=${days}`);
-  if(!r.ok) throw new Error(`CoinGecko ${r.status}`);
-  const d = await r.json();
-  if(!Array.isArray(d)||d.length===0) throw new Error('Leere Antwort');
-  return d.map(([t,o,h,l,c])=>({time:new Date(t),open:o,high:h,low:l,close:c,vol:400+Math.random()*800}));
+// ═══════════════════════════════════════════════════════════════════════
+// MULTI-SOURCE DATA FETCHING — CORS-robust mit Fallback-Kette
+// Quellen: 1) Binance (Crypto direkt, kein CORS)
+//          2) CoinGecko direkt
+//          3) CoinGecko via corsproxy.io
+//          4) CoinGecko via allorigins
+// ═══════════════════════════════════════════════════════════════════════
+
+// Mapping CoinGecko-ID → Binance Symbol
+const BINANCE_SYMBOLS = {
+  bitcoin:'BTCUSDT', ethereum:'ETHUSDT', solana:'SOLUSDT',
+  ripple:'XRPUSDT', binancecoin:'BNBUSDT', cardano:'ADAUSDT',
+  'avalanche-2':'AVAXUSDT', chainlink:'LINKUSDT', polkadot:'DOTUSDT',
+  dogecoin:'DOGEUSDT', 'shiba-inu':'SHIBUSDT', litecoin:'LTCUSDT',
+  tron:'TRXUSDT', near:'NEARUSDT', 'internet-computer':'ICPUSDT', sui:'SUIUSDT',
+};
+
+// Binance interval mapping
+const BN_INTERVAL = { '10m':'15m','15m':'15m','30m':'30m','1h':'1h' };
+
+async function fetchWithTimeout(url, ms=7000) {
+  const ctrl = new AbortController();
+  const tid   = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const r = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(tid);
+    return r;
+  } catch(e) { clearTimeout(tid); throw e; }
 }
 
-async function getCGPrice(cg) {
-  const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${cg}&vs_currencies=usd&include_24hr_change=true`);
-  if(!r.ok) return null;
-  return (await r.json())[cg]||null;
+// Try a list of URL-builder functions in sequence, return first success
+async function tryUrls(builders, validate) {
+  for(const build of builders) {
+    try {
+      const url = build();
+      const r   = await fetchWithTimeout(url, 6000);
+      if(!r.ok) continue;
+      const data = await r.json();
+      if(validate(data)) return data;
+    } catch(e) { /* try next */ }
+  }
+  return null;
 }
+
+// ── OHLC for chart (returns [{time,open,high,low,close,vol}]) ──────────
+async function getCGOHLC(cg, days=1) {
+  const bnSym = BINANCE_SYMBOLS[cg];
+
+  // 1) Binance — no CORS, very fast, only for crypto
+  if(bnSym) {
+    try {
+      const interval = BN_INTERVAL[tf] || '15m';
+      const limit    = 100;
+      const url = `https://api.binance.com/api/v3/klines?symbol=${bnSym}&interval=${interval}&limit=${limit}`;
+      const r   = await fetchWithTimeout(url, 6000);
+      if(r.ok) {
+        const d = await r.json();
+        if(Array.isArray(d) && d.length > 0) {
+          return d.map(k => ({
+            time:  new Date(k[0]),
+            open:  parseFloat(k[1]),
+            high:  parseFloat(k[2]),
+            low:   parseFloat(k[3]),
+            close: parseFloat(k[4]),
+            vol:   parseFloat(k[5]),
+          }));
+        }
+      }
+    } catch(e) { /* fall through */ }
+  }
+
+  // 2-4) CoinGecko via different proxies
+  const cgUrl = `https://api.coingecko.com/api/v3/coins/${cg}/ohlc?vs_currency=usd&days=${days}`;
+  const proxies = [
+    () => cgUrl,
+    () => `https://corsproxy.io/?${encodeURIComponent(cgUrl)}`,
+    () => `https://api.allorigins.win/raw?url=${encodeURIComponent(cgUrl)}`,
+    () => `https://thingproxy.freeboard.io/fetch/${cgUrl}`,
+  ];
+
+  for(const buildUrl of proxies) {
+    try {
+      const r = await fetchWithTimeout(buildUrl(), 7000);
+      if(!r.ok) continue;
+      const d = await r.json();
+      // allorigins wraps in {contents:...}
+      const arr = Array.isArray(d) ? d : (d.contents ? JSON.parse(d.contents) : null);
+      if(Array.isArray(arr) && arr.length > 0) {
+        return arr.map(([t,o,h,l,cl]) => ({
+          time:new Date(t), open:o, high:h, low:l, close:cl,
+          vol: 400 + Math.random()*800,
+        }));
+      }
+    } catch(e) { /* try next */ }
+  }
+
+  throw new Error('Alle Datenquellen nicht erreichbar');
+}
+
+// ── Live price (best effort) ──────────────────────────────────────────
+async function getCGPrice(cg) {
+  const bnSym = BINANCE_SYMBOLS[cg];
+
+  // 1) Binance ticker — instant, no CORS
+  if(bnSym) {
+    try {
+      const r = await fetchWithTimeout(
+        `https://api.binance.com/api/v3/ticker/24hr?symbol=${bnSym}`, 4000);
+      if(r.ok) {
+        const d = await r.json();
+        return {
+          usd: parseFloat(d.lastPrice),
+          usd_24h_change: parseFloat(d.priceChangePercent),
+        };
+      }
+    } catch(e) {}
+  }
+
+  // 2-3) CoinGecko with proxy
+  const cgUrl = `https://api.coingecko.com/api/v3/simple/price?ids=${cg}&vs_currencies=usd&include_24hr_change=true`;
+  for(const url of [cgUrl, `https://corsproxy.io/?${encodeURIComponent(cgUrl)}`]) {
+    try {
+      const r = await fetchWithTimeout(url, 5000);
+      if(!r.ok) continue;
+      const d = await r.json();
+      const entry = d[cg] || (d.contents && JSON.parse(d.contents)[cg]);
+      if(entry) return entry;
+    } catch(e) {}
+  }
+  return null;
+}
+
+// ── 90-day OHLC helper (used by Heatmap, Elliott, Seasonality) ────────
+// Flexible OHLC loader — supports any day range, used by Heatmap/Season/Elliott
+// ── Multi-source OHLC fetcher with smart strategy per timeframe ─────
+// Short (≤90d):  Binance 1d klines (crypto) or CoinGecko OHLC
+// Long  (>90d):  Binance 1w klines (crypto) or CoinGecko market_chart → synthetic OHLC
+async function getCGOHLCDays(coinId, days=90) {
+  const bnSym  = BINANCE_SYMBOLS[coinId];
+  const isLong = days > 90;
+
+  // ── 1. Binance (crypto only) ─────────────────────────────────────
+  if(bnSym) {
+    try {
+      const interval = days <= 90  ? '1d'
+                     : days <= 180 ? '3d'
+                     : days <= 365 ? '1w'
+                     :               '1w';
+      const limit = Math.min(Math.ceil(days / (interval==='1d'?1:interval==='3d'?3:7)), 200);
+      const url   = `https://api.binance.com/api/v3/klines?symbol=${bnSym}&interval=${interval}&limit=${limit}`;
+      const r     = await fetchWithTimeout(url, 7000);
+      if(r.ok) {
+        const data = await r.json();
+        if(Array.isArray(data) && data.length > 5) {
+          return data.map(k => ({
+            time:  new Date(+k[0]),
+            open:  parseFloat(k[1]),
+            high:  parseFloat(k[2]),
+            low:   parseFloat(k[3]),
+            close: parseFloat(k[4]),
+            vol:   parseFloat(k[5]),
+          }));
+        }
+      }
+    } catch(e) {}
+  }
+
+  // ── 2. CoinGecko OHLC (works well up to 90 days) ─────────────────
+  if(!isLong) {
+    const cgUrl = `https://api.coingecko.com/api/v3/coins/${coinId}/ohlc?vs_currency=usd&days=${days}`;
+    for(const url of [cgUrl, `https://corsproxy.io/?${encodeURIComponent(cgUrl)}`, `https://api.allorigins.win/raw?url=${encodeURIComponent(cgUrl)}`]) {
+      try {
+        const r   = await fetchWithTimeout(url, 8000);
+        if(!r.ok) continue;
+        const d   = await r.json();
+        const arr = Array.isArray(d) ? d : (d.contents ? JSON.parse(d.contents) : null);
+        if(Array.isArray(arr) && arr.length > 5)
+          return arr.map(([t,o,h,l,cl]) => ({ time:new Date(t), open:o, high:h, low:l, close:cl }));
+      } catch(e) {}
+    }
+  }
+
+  // ── 3. CoinGecko market_chart → daily close prices → approx OHLC ──
+  // Best for 6–24 month views: returns daily closes, we build OHLC candles
+  const mcUrl = `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}&interval=daily`;
+  for(const url of [mcUrl, `https://corsproxy.io/?${encodeURIComponent(mcUrl)}`, `https://api.allorigins.win/raw?url=${encodeURIComponent(mcUrl)}`]) {
+    try {
+      const r    = await fetchWithTimeout(url, 10000);
+      if(!r.ok) continue;
+      const raw  = await r.json();
+      const data = raw.prices || (raw.contents && JSON.parse(raw.contents).prices);
+      if(!Array.isArray(data) || data.length < 5) continue;
+
+      // Build OHLC from daily closes using rolling window
+      const candles = [];
+      for(let i=0; i<data.length; i++) {
+        const [t, close] = data[i];
+        const prevClose  = i > 0 ? data[i-1][1] : close;
+        const open       = prevClose;
+        // Estimate high/low from close-open range + small volatility factor
+        const range  = Math.abs(close - open);
+        const wiggle = (close * 0.005) + range * 0.3;
+        const high   = Math.max(open, close) + wiggle;
+        const low    = Math.min(open, close) - wiggle;
+        candles.push({ time:new Date(t), open, high, low, close, vol:0 });
+      }
+      return candles;
+    } catch(e) {}
+  }
+
+  return []; // caller's fallback handles empty
+}
+
+// Legacy alias
+const getCGOHLC90 = (id) => getCGOHLCDays(id, 90);
+
+
 
 function demoData(base, n) {
   let p=base; const now=Date.now(), ms=1800000;
@@ -2329,7 +2574,7 @@ async function load(silent=false){
     };
     const base = demoBases[coin] || 100;
     candles=slice(demoData(base,52), tf);
-    document.getElementById('errNotice').textContent=`Live-Daten konnten nicht geladen werden (${e.message}) — Demo-Modus aktiv`;
+    document.getElementById('errNotice').textContent=`Keine Live-Daten verfügbar (${e.message}) — Demo-Modus aktiv. Nächster Versuch in 60 Sek.`;
     document.getElementById('errNotice').classList.add('on');
     document.getElementById('demoTag').classList.add('on');
   }
@@ -2972,21 +3217,15 @@ async function loadSeasonality(coinId){
   badge.className   = 'season-badge neut';
 
   try {
-    // 10 weeks = 70 days of daily OHLC
-    const url = `https://api.coingecko.com/api/v3/coins/${coinId}/ohlc?vs_currency=usd&days=90`;
     let candles = [];
-    try {
-      const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
-      if(r.ok) {
-        const raw = await r.json();
-        candles = raw.map(([t,o,h,l,cl]) => ({
-          date: new Date(t),
-          wd:   new Date(t).getDay(),
-          pct:  ((cl - o) / o) * 100,
-          bull: cl >= o,
-        }));
-      }
-    } catch(e) { /* fallback below */ }
+    // Use robust multi-source fetch
+    const raw90 = await getCGOHLC90(coinId);
+    if(raw90.length > 0) {
+      candles = raw90.map(c => ({
+        date: c.time, wd: c.time.getDay(),
+        pct: ((c.close - c.open) / c.open) * 100, bull: c.close >= c.open,
+      }));
+    }
 
     // Fallback: generate synthetic data from past 90 days using demo OHLC
     if(candles.length < 20) {
@@ -3151,15 +3390,11 @@ async function loadSeasonalityChart(coinId) {
   // Fetch 90 days OHLC
   let candles = [];
   try {
-    const r = await fetch(
-      `https://api.coingecko.com/api/v3/coins/${coinId}/ohlc?vs_currency=usd&days=90`,
-      { signal: AbortSignal.timeout(9000) }
-    );
-    if(r.ok) {
-      const raw = await r.json();
-      candles = raw.map(([t,o,h,l,cl]) => ({
-        date: new Date(t), wd: new Date(t).getDay(),
-        pct: ((cl - o) / o) * 100, bull: cl >= o,
+    const raw90 = await getCGOHLC90(coinId);
+    if(raw90.length > 0) {
+      candles = raw90.map(c => ({
+        date: c.time, wd: c.time.getDay(),
+        pct: ((c.close - c.open) / c.open) * 100, bull: c.close >= c.open,
       }));
     }
   } catch(e) {}
@@ -3371,40 +3606,78 @@ function fibLevels(from, to) {
   };
 }
 
-// Classify wave phase based on pivots & price action
+// ── Enhanced Elliott Wave detection — pivot-sequence based ───────────
+// Uses swing high/low sequences to identify 5-wave impulse vs ABC correction
 function detectElliottPhase(candles) {
   if(candles.length < 20) return null;
   const prices  = candles;
   const cls_arr = prices.map(c=>c.close);
-  const {highs, lows} = findPivots(prices, Math.max(3, Math.floor(prices.length/10)));
+  const n       = prices.length;
 
-  const lastPrice = cls_arr[cls_arr.length-1];
+  // Adaptive pivot window: wider for longer timeframes
+  const pivotWin = n > 300 ? Math.floor(n/18)
+                 : n > 150 ? Math.floor(n/14)
+                 : n > 60  ? Math.floor(n/10)
+                 :            Math.max(3, Math.floor(n/8));
+  const {highs, lows} = findPivots(prices, pivotWin);
+
+  const lastPrice   = cls_arr[n-1];
   const period_high = Math.max(...prices.map(p=>p.high));
   const period_low  = Math.min(...prices.map(p=>p.low));
-  const range       = period_high - period_low;
-  const pos         = (lastPrice - period_low) / (range||1); // 0=low, 1=high
+  const range       = period_high - period_low || 1;
+  const pos         = (lastPrice - period_low) / range;
 
-  // Simple EMA-based trend
-  const ema20 = prices.slice(-20).reduce((a,p)=>a+p.close,0)/20;
-  const ema50 = prices.length>=50 ? prices.slice(-50).reduce((a,p)=>a+p.close,0)/50 : ema20;
-  const trend = lastPrice > ema20 && ema20 > ema50 ? 'UP' : lastPrice < ema20 && ema20 < ema50 ? 'DOWN' : 'SIDEWAYS';
+  // Multi-span EMAs for robust trend detection
+  const emaOf = (span) => {
+    if(n < span) return cls_arr[n-1];
+    return prices.slice(-span).reduce((a,p)=>a+p.close,0)/span;
+  };
+  const ema20  = emaOf(20);
+  const ema50  = emaOf(Math.min(50,n));
+  const ema100 = emaOf(Math.min(100,n));
+  const trend  = (lastPrice > ema20 && ema20 > ema50 && ema50 > ema100) ? 'UP'
+               : (lastPrice < ema20 && ema20 < ema50 && ema50 < ema100) ? 'DOWN'
+               : (lastPrice > ema20 && ema20 > ema50)                   ? 'UP'
+               : (lastPrice < ema20 && ema20 < ema50)                   ? 'DOWN'
+               : 'SIDEWAYS';
 
-  // Momentum
-  const roc5  = (cls_arr[cls_arr.length-1]-cls_arr[cls_arr.length-6])/cls_arr[cls_arr.length-6]*100;
-  const roc10 = (cls_arr[cls_arr.length-1]-cls_arr[cls_arr.length-11])/cls_arr[cls_arr.length-11]*100;
+  // Rate of change at different spans (adapts to candle count)
+  const rocSpan = Math.max(5, Math.floor(n*0.05));
+  const roc     = (cls_arr[n-1]-cls_arr[Math.max(0,n-1-rocSpan)])/cls_arr[Math.max(0,n-1-rocSpan)]*100;
+  const rocLong = (cls_arr[n-1]-cls_arr[Math.max(0,Math.floor(n/2))])/cls_arr[Math.max(0,Math.floor(n/2))]*100;
 
-  let wave, phase, impulse, correction, priceTarget1, priceTarget2, devLow, devHigh, desc, nextExp;
+  // Pivot sequence analysis
+  const recentHighs = highs.slice(-5);
+  const recentLows  = lows.slice(-5);
+  const higherHighs = recentHighs.length>=2 && recentHighs[recentHighs.length-1].high > recentHighs[recentHighs.length-2].high;
+  const higherLows  = recentLows.length>=2  && recentLows[recentLows.length-1].low   > recentLows[recentLows.length-2].low;
+  const lowerHighs  = recentHighs.length>=2 && recentHighs[recentHighs.length-1].high < recentHighs[recentHighs.length-2].high;
+  const lowerLows   = recentLows.length>=2  && recentLows[recentLows.length-1].low    < recentLows[recentLows.length-2].low;
+
+  // Check for 5-wave count via pivot alternation
+  const pivotCount = Math.min(highs.length, lows.length);
+  const has5Waves  = pivotCount >= 5;
+
+  let wave, phase, impulse, priceTarget1, priceTarget2, devLow, devHigh, nextExp;
 
   if(trend==='UP') {
-    if(pos>0.85 && roc5>0)        { wave='5'; phase='Impuls';     impulse=true; }
-    else if(pos>0.65 && roc5>0)   { wave='3'; phase='Impuls';     impulse=true; }
-    else if(pos>0.45 && roc5<0)   { wave='4'; phase='Korrektur';  impulse=false; }
-    else if(pos>0.25 && roc5>0)   { wave='3'; phase='Impuls';     impulse=true; }
-    else                          { wave='2'; phase='Korrektur';  impulse=false; }
+    if(pos>0.88 && roc>0 && has5Waves)    { wave='5'; phase='Impuls (Ende)'; impulse=true;  }
+    else if(pos>0.88 && roc<0)            { wave='A'; phase='Korrektur';     impulse=false; }
+    else if(pos>0.65 && higherHighs && higherLows && roc>0) { wave='3'; phase='Impuls (Mitte)'; impulse=true; }
+    else if(pos>0.65 && roc>0)            { wave='3'; phase='Impuls';        impulse=true;  }
+    else if(pos>0.4  && roc<0)            { wave='4'; phase='Korrektur';     impulse=false; }
+    else if(pos>0.2  && roc>0)            { wave='1'; phase='Impuls (Start)';impulse=true;  }
+    else                                  { wave='2'; phase='Korrektur';     impulse=false; }
   } else if(trend==='DOWN') {
-    if(pos<0.15 && roc5<0)        { wave='C'; phase='Korrektur';  impulse=false; }
-    else if(pos<0.35 && roc5<0)   { wave='A'; phase='Korrektur';  impulse=false; }
-    else if(pos>0.45 && roc5>0)   { wave='B'; phase='Gegenbewegung'; impulse=false; }
+    if(pos<0.12 && roc<0)                 { wave='C'; phase='Korrektur (Ende)'; impulse=false; }
+    else if(pos<0.3  && lowerHighs && lowerLows) { wave='A'; phase='Korrektur'; impulse=false; }
+    else if(pos>0.45 && roc>0)            { wave='B'; phase='Gegenbewegung'; impulse=false; }
+    else if(rocLong<-20)                  { wave='C'; phase='Korrektur';     impulse=false; }
+    else                                  { wave='A'; phase='Korrektur';     impulse=false; }
+  } else {
+    if(pos<0.12 && roc<0)          { wave='C'; phase='Korrektur (Ende)'; impulse=false; }
+    else if(pos<0.3 && roc<0)      { wave='A'; phase='Korrektur';  impulse=false; }
+    else if(pos>0.45 && roc>0)    { wave='B'; phase='Gegenbewegung'; impulse=false; }
     else                          { wave='A'; phase='Korrektur';  impulse=false; }
   } else {
     wave='3/4'; phase='Konsolidierung'; impulse=false;
@@ -3455,29 +3728,40 @@ function detectElliottPhase(candles) {
   };
 }
 
-async function loadElliottChart(coinId) {
+// State: current Elliott period
+let ewDays = 365;
+
+function setEwPeriod(days) {
+  ewDays = days;
+  // Update active button
+  document.querySelectorAll('.ew-tf-btn').forEach(b => {
+    b.classList.toggle('active', +b.dataset.days === days);
+  });
+  loadElliottChart(coin);
+}
+
+async function loadElliottChart(coinId, days) {
+  const d = days || ewDays || 365;
   const badge  = document.getElementById('elliottPhaseBadge');
   const infoG  = document.getElementById('ewInfoGrid');
+  const subLbl = document.getElementById('ewPeriodSub');
+  const note   = document.getElementById('ewPeriodNote');
   if(!badge || !infoG) return;
 
   badge.textContent = 'Analysiert…'; badge.className = 'ew-wave-badge neu';
+  const periodLabel = d===90?'3 Monate':d===180?'6 Monate':d===365?'1 Jahr':'2 Jahre';
+  const candleNote  = d<=90?'Tageskerzen':d<=180?'3-Tages-Kerzen':d<=365?'Wochenkerzen':'Wochenkerzen';
+  if(note) note.textContent = `Lade ${periodLabel} · ${candleNote}…`;
+  if(subLbl) subLbl.textContent = `${periodLabel} · Automatische Wellenerkennung`;
 
-  // Fetch 90-day OHLC for Elliott analysis
+  // Fetch OHLC for selected period
   let candles = [];
   try {
-    const r = await fetch(
-      `https://api.coingecko.com/api/v3/coins/${coinId}/ohlc?vs_currency=usd&days=90`,
-      { signal: AbortSignal.timeout(9000) }
-    );
-    if(r.ok) {
-      const raw = await r.json();
-      candles = raw.map(([t,o,h,l,cl]) => ({
-        time:new Date(t), open:o, high:h, low:l, close:cl
-      }));
-    }
+    const rawData = await getCGOHLCDays(coinId, d);
+    if(rawData.length > 0) candles = rawData;
   } catch(e) {}
 
-  // Fallback
+  // Fallback: generate synthetic data scaled to selected period
   if(candles.length < 20) {
     const demoBases = {
       bitcoin:67000,ethereum:3500,solana:170,ripple:.62,binancecoin:420,
@@ -3491,14 +3775,17 @@ async function loadElliottChart(coinId) {
     const seed = coinId.split('').reduce((a,ch)=>a+ch.charCodeAt(0),0);
     const rng  = s=>{const x=Math.sin(s)*10000;return x-Math.floor(x);};
     let p=base;
-    for(let i=89;i>=0;i--){
-      const d=new Date(); d.setDate(d.getDate()-i);
-      const drift=(rng(seed+i+1)-.47)*2.2;
+    // Scale candle count to period: more candles = better wave structure
+    const totalCandles = d<=90 ? d : d<=180 ? Math.round(d/2) : Math.round(d/3);
+    const msPerCandle  = (d*86400000)/totalCandles;
+    for(let i=totalCandles-1;i>=0;i--){
+      const dt=new Date(Date.now()-i*msPerCandle);
+      const drift=(rng(seed+i+1)-.47)*(d>365?1.5:2.2);
       const o=p, cl=Math.max(o*(1+drift/100),.00001);
       const h=Math.max(o,cl)*(1+rng(seed+i+50)*.01);
       const l=Math.min(o,cl)*(1-rng(seed+i+99)*.01);
       p=cl;
-      candles.push({time:d,open:o,high:h,low:l,close:cl});
+      candles.push({time:dt,open:o,high:h,low:l,close:cl});
     }
   }
 
@@ -3506,7 +3793,13 @@ async function loadElliottChart(coinId) {
   if(!ew) return;
 
   const fmt = p => p>=10000?'$'+(p/1000).toFixed(1)+'K' : p>=1?'$'+p.toFixed(2) : '$'+p.toFixed(6);
-  const labels = candles.map(c=>{const d=c.time;return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}`;});
+  const MONTHS = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+  const labels = candles.map(c=>{
+    const dt=c.time;
+    if(d >= 365) return MONTHS[dt.getMonth()]+' '+String(dt.getFullYear()).slice(2);
+    if(d >= 90)  return MONTHS[dt.getMonth()]+' '+String(dt.getDate()).padStart(2,'0');
+    return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}`;
+  });
   const closes = candles.map(c=>c.close);
 
   // Fibonacci lines dataset
@@ -3620,9 +3913,16 @@ async function loadElliottChart(coinId) {
     },
   });
 
-  // Update badge
+  // Update badge + period info
   badge.textContent = `Welle ${ew.wave} · ${ew.phase}`;
   badge.className   = 'ew-wave-badge ' + (ew.impulse?'imp':ew.phase==='Gegenbewegung'?'neu':'cor');
+  const pLabel = d===90?'3 Monate':d===180?'6 Monate':d===365?'1 Jahr':'2 Jahre';
+  const kLabel = d<=90?'Tageskerzen':d<=365?'Wochenkerzen':'Wochenkerzen';
+  if(note)   note.textContent   = `${candles.length} Kerzen · ${kLabel}`;
+  if(subLbl) subLbl.textContent = `${pLabel} · Automatische Wellenerkennung`;
+  const periodLabel = d===90?'3 Monate':d===180?'6 Monate':d===365?'12 Monate':'24 Monate';
+  if(subLbl) subLbl.textContent = `${periodLabel} · ${candles.length} Datenpunkte · ${ew.trend==='UP'?'↑ Aufwärtstrend':ew.trend==='DOWN'?'↓ Abwärtstrend':'→ Seitwärts'}`;
+  if(note)   note.textContent   = `${candles.length} Kerzen · Pivot-Fenster: ${Math.max(3,Math.floor(candles.length/10))} · Fib: ${fmt(ew.swingLow)}–${fmt(ew.swingHigh)}`;
 
   // Info grid
   const ewColors = { UP:'up', DOWN:'dn', SIDEWAYS:'au' };
@@ -3659,7 +3959,7 @@ async function loadElliottChart(coinId) {
     <div class="ew-box">
       <div class="ew-box-lbl">Swing Bereich</div>
       <div class="ew-box-val au">${fmt(ew.period_low)} — ${fmt(ew.period_high)}</div>
-      <div class="ew-box-desc">90-Tage Hoch / Tief · Basis der Fibonacci-Levels</div>
+      <div class="ew-box-desc">${periodLabel} Hoch/Tief · Basis der Fibonacci-Levels</div>
     </div>`;
 }
 
@@ -3679,14 +3979,8 @@ async function loadHeatmap(coinId) {
   // Fetch 90 days for volume profile
   let candles = [];
   try {
-    const r = await fetch(
-      `https://api.coingecko.com/api/v3/coins/${coinId}/ohlc?vs_currency=usd&days=90`,
-      { signal: AbortSignal.timeout(9000) }
-    );
-    if(r.ok) {
-      const raw = await r.json();
-      candles = raw.map(([t,o,h,l,cl]) => ({ time:new Date(t), open:o, high:h, low:l, close:cl }));
-    }
+    const raw90 = await getCGOHLC90(coinId);
+    if(raw90.length > 0) candles = raw90;
   } catch(e) {}
 
   // Fallback demo
