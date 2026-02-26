@@ -3176,19 +3176,19 @@ function togglePwVis(){
 }
 
 // Check session on page load
-(function checkAuth(){
+// checkAuth läuft nach vollständigem Script-Parse
+window.addEventListener('DOMContentLoaded', function checkAuth(){
   if(sessionStorage.getItem(SESSION_KEY) === '1'){
     const overlay = document.getElementById('loginOverlay');
     const wrapper = document.getElementById('appWrapper');
     if(overlay) overlay.remove();
     if(wrapper) wrapper.classList.remove('blurred');
+    initApp();
   } else {
-    setTimeout(() => {
-      const inp = document.getElementById('loginPw');
-      if(inp) inp.focus();
-    }, 300);
+    const inp = document.getElementById('loginPw');
+    if(inp) inp.focus();
   }
-})();
+});
 
 // ═══════════════════════════════════════════════════════════════════════
 // WOCHENTAGS-SAISONALITÄT
@@ -4296,10 +4296,7 @@ function initApp(){
   setInterval(loadEconCalendar, 1800000);
 }
 
-// Auto-start if already authenticated (session still active)
-if(sessionStorage.getItem(SESSION_KEY) === '1'){
-  initApp();
-}
+// Auto-start handled by checkAuth() above
 </script>
 </div><!-- /appWrapper -->
 </body>
